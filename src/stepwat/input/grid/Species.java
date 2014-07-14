@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -12,8 +11,9 @@ import java.util.List;
 import java.util.Map;
 
 import stepwat.LogFileIn;
+import stepwat.input.Input;
 
-public class Species {
+public class Species extends Input {
 
 	public class Grid_Init_Species_row implements Comparable<Grid_Init_Species_row>{
 		int cell;
@@ -37,8 +37,8 @@ public class Species {
 	List<Grid_Init_Species_row> Grid_Init_Species = new ArrayList<Grid_Init_Species_row>();
 	Map<String,Integer> speciesIndexMap = new HashMap<String, Integer>();
 	
-	public void read(String initSpeciesFile) throws Exception {
-		List<String> lines = java.nio.file.Files.readAllLines(Paths.get(initSpeciesFile), StandardCharsets.UTF_8);
+	public void read(Path initSpeciesFile) throws Exception {
+		List<String> lines = java.nio.file.Files.readAllLines(initSpeciesFile, StandardCharsets.UTF_8);
 		LogFileIn f = stepwat.LogFileIn.getInstance();
 		int nFileItemsRead = 0;
 
@@ -113,6 +113,7 @@ public class Species {
 		}
 		//Now sort the cells
 		Collections.sort(Grid_Init_Species);
+		this.data = true;
 	}
 	public void write(Path initSpeciesFile) throws IOException {
 		List<String> lines = new ArrayList<String>();

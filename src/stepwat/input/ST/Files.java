@@ -8,8 +8,9 @@ import java.util.Collections;
 import java.util.List;
 
 import stepwat.LogFileIn;
+import stepwat.input.Input;
 
-public class Files {
+public class Files extends Input {
 	public String logfile;
 	public String model;
 	public String env;
@@ -24,6 +25,7 @@ public class Files {
 	public String mortavg;
 	public String sxw;
 	
+	@Override
 	public void read(Path FilesPath) throws Exception {
 		List<String> lines = java.nio.file.Files.readAllLines(FilesPath, StandardCharsets.UTF_8);
 		LogFileIn f = stepwat.LogFileIn.getInstance();
@@ -107,7 +109,10 @@ public class Files {
 				nFileItemsRead++;
 			}
 		}
+		this.data = true;
 	}
+	
+	@Override
 	public void write(Path gridFilesIn) throws IOException {
 		List<String> lines = new ArrayList<String>();
 		int maxStringLength = getMaxStringLength()+4;
@@ -132,6 +137,7 @@ public class Files {
 		lines.add(sxw + getSpacing(maxStringLength-sxw.length()) + "#");
 		java.nio.file.Files.write(gridFilesIn, lines, StandardCharsets.UTF_8);
 	}
+	
 	private int getMaxStringLength() {		
 		List<Integer> lengths = new ArrayList<Integer>();
 		lengths.add(logfile.length());
@@ -149,7 +155,9 @@ public class Files {
 		lengths.add(sxw.length());
 		return Collections.max(lengths);
 	}
+	
 	private String getSpacing(int length) {
 		return new String(new char[length]).replace("\0", " ");
 	}
+	
 }

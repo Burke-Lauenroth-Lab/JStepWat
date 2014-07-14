@@ -4,23 +4,23 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 import stepwat.LogFileIn;
+import stepwat.input.Input;
 
-public class Setup {
+public class Setup extends Input {
 	int rows;
 	int columns;
+	private int gridCells;
 	boolean disturbances;
 	boolean soils;
 	boolean seedDispersal;
 	
-	public void read(String GridSetup) throws Exception {
-		List<String> lines = java.nio.file.Files.readAllLines(
-				Paths.get(GridSetup), StandardCharsets.UTF_8);
+	public void read(Path GridSetup) throws Exception {
+		List<String> lines = java.nio.file.Files.readAllLines(GridSetup, StandardCharsets.UTF_8);
 		LogFileIn f = stepwat.LogFileIn.getInstance();
 		int nFileItemsRead = 0;
 		for (String line : lines) {
@@ -74,8 +74,11 @@ public class Setup {
 							"grid_setup.in : unkown line.");
 					break;
 				}
+				nFileItemsRead++;
 			}
 		}
+		this.data = true;
+		gridCells = this.columns * this.rows;
 	}
 	public void write(Path gridSetupIn) throws IOException {
 		List<String> lines = new ArrayList<String>();
@@ -97,5 +100,8 @@ public class Setup {
 	}
 	private String getSpacing(int length) {
 		return new String(new char[length]).replace("\0", " ");
+	}
+	public int gridCells() {
+		return gridCells;
 	}
 }

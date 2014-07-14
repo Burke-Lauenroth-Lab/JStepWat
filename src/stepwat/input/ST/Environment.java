@@ -7,8 +7,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import stepwat.LogFileIn;
+import stepwat.input.Input;
 
-public class Environment {
+public class Environment extends Input {
 	static final String[] Comments = {"# Environment input file for STEPPEWAT\n\n"+
 			"# Anything after the first pound sign is a comment\n"+
 			"# Blank lines, white space, and comments may be used freely,\n"+
@@ -476,6 +477,7 @@ public class Environment {
 				nFileItemsRead++;
 			}
 		}
+		this.data = true;
 	}
 	
 	public void write(Path EnvirInPath) throws IOException {

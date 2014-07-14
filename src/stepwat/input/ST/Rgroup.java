@@ -8,8 +8,9 @@ import java.util.Collections;
 import java.util.List;
 
 import stepwat.LogFileIn;
+import stepwat.input.Input;
 
-public class Rgroup {
+public class Rgroup extends Input {
 	public static final String[] Comments = {"# Rgroup input definition file STEPPEWAT\n"+
 			"# resource-group-level information\n"+
 			"\n"+
@@ -323,6 +324,7 @@ public class Rgroup {
 				nFileItemsRead++;
 			}
 		}
+		this.data = true;
 		sort();
 	}
 	

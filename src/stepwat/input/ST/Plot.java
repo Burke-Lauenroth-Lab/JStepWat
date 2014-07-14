@@ -7,8 +7,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import stepwat.LogFileIn;
+import stepwat.input.Input;
 
-public class Plot {
+public class Plot extends Input {
 	public static final String Comment = "# Plot input definition file STEPPEWAT\n"+
 			"\n"+
 			"# Anything after the first pound sign is a comment\n"+
@@ -57,6 +58,7 @@ public class Plot {
 				nFileItemsRead++;
 			}
 		}
+		this.data = true;
 	}
 	
 	public void write(Path PlotInPath) throws IOException {

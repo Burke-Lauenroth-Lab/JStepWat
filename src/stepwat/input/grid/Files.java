@@ -3,14 +3,14 @@ package stepwat.input.grid;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 import stepwat.LogFileIn;
+import stepwat.input.Input;
 
-public class Files {
+public class Files extends Input {
 	/**
 	 * folder containing stepwat setup files
 	 */
@@ -29,9 +29,8 @@ public class Files {
 	public String receiveprob; // name of the prefix given to the seed disperal
 								// received probability output files
 
-	public void read(String FilesPath) throws Exception {
-		List<String> lines = java.nio.file.Files.readAllLines(
-				Paths.get(FilesPath), StandardCharsets.UTF_8);
+	public void read(Path FilesPath) throws Exception {
+		List<String> lines = java.nio.file.Files.readAllLines(FilesPath, StandardCharsets.UTF_8);
 		LogFileIn f = stepwat.LogFileIn.getInstance();
 		int nFileItemsRead = 0;
 		for (String line : lines) {
@@ -112,8 +111,10 @@ public class Files {
 							"Grid files.in : unkown line.");
 					break;
 				}
+				nFileItemsRead++;
 			}
 		}
+		this.data = true;
 	}
 	public void write(Path gridFilesIn) throws IOException {
 		List<String> lines = new ArrayList<String>();

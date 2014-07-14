@@ -7,8 +7,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import stepwat.LogFileIn;
+import stepwat.input.Input;
 
-public class MortFlags {
+public class MortFlags extends Input {
 	public static final String[] Comments = {
 			"# Mortflags input definition file STEPPEWAT\n"
 					+ "# to control output quantities etc.\n"
@@ -119,6 +120,7 @@ public class MortFlags {
 				nFileItemsRead++;
 			}
 		}
+		this.data = true;
 	}
 	
 	public void write(Path SpeciesInPath) throws IOException {

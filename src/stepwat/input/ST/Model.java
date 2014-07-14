@@ -7,13 +7,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 import stepwat.LogFileIn;
+import stepwat.input.Input;
 
 /**
  * Input-level parameters in STEPPE
  * @author Ryan Murphy
  *
  */
-public class Model {
+public class Model extends Input {
 	/***
 	 * niter = number of iterations to run the model.<br>
 	 *         I.e., the model runs niter times for<br>

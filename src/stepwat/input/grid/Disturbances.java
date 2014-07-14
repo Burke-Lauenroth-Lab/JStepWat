@@ -4,13 +4,13 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
 import stepwat.LogFileIn;
+import stepwat.input.Input;
 
-public class Disturbances {
+public class Disturbances extends Input {
 
 	public class Disturb_row {
 		int cell;
@@ -27,8 +27,8 @@ public class Disturbances {
 	}	
 	List<Disturb_row> Grid_Disturb = new ArrayList<Disturbances.Disturb_row>();
 	
-	public void read(String DisturbancesFile) throws Exception {
-		List<String> lines = java.nio.file.Files.readAllLines(Paths.get(DisturbancesFile), StandardCharsets.UTF_8);
+	public void read(Path DisturbancesFile) throws Exception {
+		List<String> lines = java.nio.file.Files.readAllLines(DisturbancesFile, StandardCharsets.UTF_8);
 		LogFileIn f = stepwat.LogFileIn.getInstance();
 		int nFileItemsRead = 0;
 		for (String line : lines) {
@@ -74,8 +74,10 @@ public class Disturbances {
 					}
 					break;
 				}
+				nFileItemsRead++;
 			}
 		}
+		this.data = true;
 	}
 	public void write(Path DisturbancesFile) throws IOException {
 		List<String> lines = new ArrayList<String>();

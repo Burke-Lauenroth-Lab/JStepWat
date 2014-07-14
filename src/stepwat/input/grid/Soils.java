@@ -4,15 +4,17 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 import stepwat.LogFileIn;
+import stepwat.input.Input;
 
-public class Soils {
+public class Soils extends Input {
 
+	public static final int MAX_LAYERS = 25;
+	
 	public class Grid_Soil_Lyr implements Comparable<Grid_Soil_Lyr> {
 		int layer_num;
 		int width;
@@ -59,8 +61,8 @@ public class Soils {
 	}
 	List<Grid_Soil_Lyrs> Grid_Soils = new ArrayList<Grid_Soil_Lyrs>();
 	
-	public void read(String SoilsFile) throws Exception {
-		List<String> lines = java.nio.file.Files.readAllLines(Paths.get(SoilsFile), StandardCharsets.UTF_8);
+	public void read(Path SoilsFile) throws Exception {
+		List<String> lines = java.nio.file.Files.readAllLines(SoilsFile, StandardCharsets.UTF_8);
 		LogFileIn f = stepwat.LogFileIn.getInstance();
 		int nFileItemsRead = 0;
 		int depthMin = 0;
@@ -149,6 +151,8 @@ public class Soils {
 						} else {
 							Grid_Soil_Lyr row = new Grid_Soil_Lyr();
 							row.layer_num = Integer.parseInt(values[3]);
+							if(row.layer_num > MAX_LAYERS)
+								f.LogError(LogFileIn.LogMode.ERROR, "grid_soils.csv onRead : Max Layers exceeded.");
 							row.depth = Integer.parseInt(values[4]);
 							row.bulkd = Float.parseFloat(values[5]);
 							row.fieldc = Float.parseFloat(values[6]);
@@ -168,7 +172,9 @@ public class Soils {
 					}
 					break;
 				}
+				nFileItemsRead++;
 			}
+			this.data = true;
 		}
 		//Now sort the cells
 		Collections.sort(Grid_Soils);
@@ -182,6 +188,7 @@ public class Soils {
 			}
 		}
 	}
+	
 	public void write(Path SoilsFile) throws IOException {
 		List<String> lines = new ArrayList<String>();
 		

@@ -8,8 +8,9 @@ import java.util.Collections;
 import java.util.List;
 
 import stepwat.LogFileIn;
+import stepwat.input.Input;
 
-public class Species {
+public class Species extends Input {
 	public static final String[] Comments = {
 			"# Species input definition file STEPPEWAT\n"
 					+ "\n"
@@ -391,6 +392,7 @@ public class Species {
 				//nFileItemsRead++;
 			}
 		}
+		this.data = true;
 		sort();
 	}
 	

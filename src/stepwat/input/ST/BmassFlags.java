@@ -7,8 +7,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import stepwat.LogFileIn;
+import stepwat.input.Input;
 
-public class BmassFlags {
+public class BmassFlags extends Input {
 	public static final String[] Comments = {
 			"# Bmassflags input definition file STEPPEWAT\n"
 					+ "# to help control the output quantities etc.\n"
@@ -199,6 +200,7 @@ public class BmassFlags {
 				nFileItemsRead++;
 			}
 		}
+		this.data = true;
 	}
 	
 	public void write(Path SpeciesInPath) throws IOException {
@@ -210,4 +212,5 @@ public class BmassFlags {
 		lines.add(Comments[1]);
 		java.nio.file.Files.write(SpeciesInPath, lines, StandardCharsets.UTF_8);
 	}
+	
 }
