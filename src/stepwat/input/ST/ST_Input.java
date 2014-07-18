@@ -149,11 +149,10 @@ public class ST_Input {
 	public void setPrjDir(String Path) {
 		this.prjDir = Path;
 	}
+	
 	public void setFilesIn(String Path) {
 		this.filesInName = Path;
 	}
-	
-	
 	
 	public boolean verify() throws Exception {
 		LogFileIn f = stepwat.LogFileIn.getInstance();
@@ -162,6 +161,12 @@ public class ST_Input {
 			f.LogError(LogFileIn.LogMode.WARN, "ST verify : models iterations or nYears is less then 1.");
 			return false;
 		}
+		
+		if(!rGroup.verify())
+			return false;
+		
+		if(!species.verify())
+			return false;
 		
 		return true;
 	}

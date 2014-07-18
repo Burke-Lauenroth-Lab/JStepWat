@@ -35,10 +35,10 @@ public class Species {
 	
 	/**** Quantities that can change during model runs *****/
 	int est_count; /* number of individuals established (growing)*/
-	int kills[]; /* Array of # indivs killed by age. index=age. */
+	int[] kills; /* Array of # indivs killed by age. index=age. */
 	int estabs; /* number of individuals established in iter */
 	float relsize; /* size of all indivs' relsize (>= 0) */
-	float seedprod[]; /* annuals: array of previous years' seed production (size = viable_yrs)*/
+	float[] seedprod; /* annuals: array of previous years' seed production (size = viable_yrs)*/
 	float extragrowth; /* amt of superfluous growth from extra resources */
 	float received_prob; /* the chance that this species received seeds this year... only applicable if using seed dispersal and gridded option */
 	LinkedList<Indiv> IndvHead; /* facility for linked list 8/3/01; top of list */
@@ -63,9 +63,9 @@ public class Species {
       seedling_estab_prob,
       ann_mort_prob,
       cohort_surv,
-      exp_decay,        /* annuals: exponent for viability decay function */
-      prob_veggrow[],  /* 1 value for each mortality type, if clonal*/
-      sd_Param1,	  /* for seed dispersal */
+      exp_decay;        /* annuals: exponent for viability decay function */
+    float[] prob_veggrow = new float[4];  /* 1 value for each mortality type, if clonal*/
+    float sd_Param1,	  /* for seed dispersal */
       sd_PPTdry,
       sd_PPTwet,
       sd_Pmin,
@@ -78,4 +78,40 @@ public class Species {
     	use_temp_response,
     	use_me,           /* do not establish if this is false */
     	use_dispersal;	 /* whether to use seed dispersal... only applicable if using gridded option */
+	
+	public void setInput(stepwat.input.ST.Species.SpeciesParams species, int index) {
+		this.name = species.name;
+		this.sp_num = index;
+		this.res_grp = species.rg-1;
+		this.max_age = species.age;
+		this.intrin_rate = species.irate;
+		this.max_rate = species.irate * species.ratep;
+		this.max_slow = species.slow;
+		switch(species.disturb) {
+		case 1:
+			this.disturbClass = DisturbClass.VerySensitive;
+			break;
+		case 2:
+			this.disturbClass = DisturbClass.Sensitive;
+			break;
+		case 3:
+			this.disturbClass = DisturbClass.Insensitive;
+			break;
+		case 4:
+			this.disturbClass = DisturbClass.VerySensitive;
+			break;
+		}
+		this.seedling_estab_prob = species.pestab;
+		this.seedling_estab_prob_old = species.pestab;
+		this.max_seed_estab = species.eind;
+		this.seedling_biomass = species.minbio;
+		this.mature_biomass = species.maxbio;
+		this.tempclass = (species.tclass==1)?TempClass.WarmSeason:(species.tclass==2)? TempClass.CoolSeason : TempClass.NoSeason;
+		this.relseedlingsize = species.minbio / species.maxbio;
+		this.isclonal = species.clonal;
+		this.max_vegunits = (species.clonal) ? species.vegindv : 0;
+		//this.use_me
+		this.received_prob = 0;
+		this.cohort_surv = species.cosurv;
+	}
 }

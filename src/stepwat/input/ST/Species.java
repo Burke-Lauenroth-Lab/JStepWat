@@ -431,6 +431,9 @@ public class Species extends Input {
 				} else {
 					dispersal = false;
 				}
+				if(Species_Name2Index(name) != -1) {
+					f.LogError(LogFileIn.LogMode.ERROR, "species.in read : Species "+name+" already defined.");
+				}
 				speciesParams.add(new SpeciesParams(name, rg, age, irate, ratep, slow, disturb, pestab, eind, minbio, maxbio, clonal, vegindv, tclass, cosurv, onoff, dispersal));
 			} catch(NumberFormatException e) {
 				f.LogError(LogFileIn.LogMode.ERROR, "species.in read : Could not convert group values to numbers.");
@@ -443,6 +446,9 @@ public class Species extends Input {
 				String name = values[0];
 				int viable = Integer.valueOf(values[1]);
 				float xdecay = Float.valueOf(values[2]);
+				if(Annuals_Name2Index(name) != -1) {
+					f.LogError(LogFileIn.LogMode.ERROR, "species.in read : Annuals "+name+" already defined.");
+				}
 				annualsParams.add(new AnnualsParams(name, viable, xdecay));
 			} catch(NumberFormatException e) {
 				f.LogError(LogFileIn.LogMode.ERROR, "species.in read : Could not convert Annual Parameters values to number.");
@@ -457,6 +463,9 @@ public class Species extends Input {
 				float vprop2 = Float.valueOf(values[2]);
 				float vprop3 = Float.valueOf(values[3]);
 				float vprop4 = Float.valueOf(values[4]);
+				if(SpeciesProb_Name2Index(name) != -1) {
+					f.LogError(LogFileIn.LogMode.ERROR, "species.in read : Species Prob "+name+" already defined.");
+				}
 				speciesProbParam.add(new SpeciesProbParam(name, vprop1, vprop2, vprop3, vprop4));
 			} catch(NumberFormatException e) {
 				f.LogError(LogFileIn.LogMode.ERROR, "species.in read : Could not convert Veg Prob values to number.");
@@ -475,6 +484,9 @@ public class Species extends Input {
 				float pmax = Float.valueOf(values[6]);
 				float h = Float.valueOf(values[7]);
 				float vt = Float.valueOf(values[8]);
+				if(SeedDispersal_Name2Index(name) != -1) {
+					f.LogError(LogFileIn.LogMode.ERROR, "species.in read : Seed Dispersal "+name+" already defined.");
+				}
 				seedDispersalParam.add(new SeedDispersalParam(name, dispersal, param1, pptDry, pptWet, pmin, pmax, h, vt));
 			} catch(NumberFormatException e) {
 				f.LogError(LogFileIn.LogMode.ERROR, "species.in read : Could not convert Seed Dispersal values to number.");
@@ -514,5 +526,86 @@ public class Species extends Input {
 		}
 		lines.add("\n[end]  # section end");
 		java.nio.file.Files.write(SpeciesInPath, lines, StandardCharsets.UTF_8);
+	}
+	
+	public boolean verify() throws Exception {
+		LogFileIn f = stepwat.LogFileIn.getInstance();
+		
+		for(SpeciesParams species : speciesParams) {
+			if(species.disturb > 4 || species.disturb < 1) {
+				f.LogError(LogFileIn.LogMode.WARN, "species.in verify : Incorrect disturbance class found.");
+				return false;
+			}
+		}
+		
+		for (AnnualsParams annuals : annualsParams) {
+			if(Species_Name2Index(annuals.name) < 0) {
+				f.LogError(LogFileIn.LogMode.WARN, "species.in verify : Annuals "+annuals.name+" not defined in species section.");
+				return false;
+			}
+		}
+		
+		for (SpeciesProbParam prob : speciesProbParam) {
+			if(Species_Name2Index(prob.name) < 0) {
+				f.LogError(LogFileIn.LogMode.WARN, "species.in verify : Annuals "+prob.name+" not defined in species section.");
+				return false;
+			}
+		}
+		
+		for (SeedDispersalParam seed : seedDispersalParam) {
+			if(Species_Name2Index(seed.name) < 0) {
+				f.LogError(LogFileIn.LogMode.WARN, "species.in verify : Annuals "+seed.name+" not defined in species section.");
+				return false;
+			}
+		}
+		
+		
+		
+		return true;
+	}
+	
+	
+	private int Species_Name2Index(String name) {
+		int index = -1;
+		for(int i=0; i<speciesParams.size(); i++) {
+			if(speciesParams.get(i).name.compareTo(name) == 0) {
+				index = i;
+				break;
+			}
+		}
+		return index;
+	}
+	
+	private int Annuals_Name2Index(String name) {
+		int index = -1;
+		for(int i=0; i<annualsParams.size(); i++) {
+			if(annualsParams.get(i).name.compareTo(name) == 0) {
+				index = i;
+				break;
+			}
+		}
+		return index;
+	}
+	
+	private int SpeciesProb_Name2Index(String name) {
+		int index = -1;
+		for(int i=0; i<speciesProbParam.size(); i++) {
+			if(speciesProbParam.get(i).name.compareTo(name) == 0) {
+				index = i;
+				break;
+			}
+		}
+		return index;
+	}
+	
+	private int SeedDispersal_Name2Index(String name) {
+		int index = -1;
+		for(int i=0; i<seedDispersalParam.size(); i++) {
+			if(seedDispersalParam.get(i).name.compareTo(name) == 0) {
+				index = i;
+				break;
+			}
+		}
+		return index;
 	}
 }

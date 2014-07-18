@@ -21,39 +21,74 @@ public class Control {
 	private Globals Globals;
 	private BmassFlags BmassFlags;
 	private MortFlags MortFlags;
-
-	private boolean UseSoilwat; /* not used in every module */
-	private boolean UseGrid;
-	private boolean UseSeedDispersal;
-	private boolean EchoInits;
-	private boolean UseProgressBar;
+	private InitParams initParams;
 	
-	private boolean QuietMode;
+	public class InitParams {
+		/**
+		 * Project Working Directory<br>
+		 * If not set, will default to programs launch directory.
+		 */
+		public String workingDirectory = "";
+		/**
+		 * Relative Path from PrjDir to files.in file.
+		 */
+		public String filesInRelativePath = "";
+		/**
+		 * quiet mode, don't print message to check logfile.
+		 */
+		public boolean QuietMode = false;
+		/**
+		 * use SOILWAT model for resource partitioning.
+		 */
+		public boolean UseSoilwat = false;
+		/**
+		 * echo initialization results to logfile
+		 */
+		public boolean EchoInits = false;
+		/**
+		 * use gridded mode
+		 */
+		public boolean UseGrid = false; 
+	}
+	
+	private boolean UseSeedDispersal;
+	private boolean UseProgressBar;
 	
 	private boolean beenhere = false;
 	
-	public void start(String[] args) {
+	public Control(String[] args) {
+		initParams = new InitParams();
+		init_args(args, initParams);
+	}
+	
+	public Control(InitParams initParams) {
+		initParams = new InitParams();
+		this.initParams.workingDirectory = initParams.workingDirectory;
+		this.initParams.filesInRelativePath = initParams.filesInRelativePath;
+		this.initParams.EchoInits = initParams.EchoInits;
+		this.initParams.QuietMode = initParams.QuietMode;
+		this.initParams.UseGrid = initParams.UseGrid;
+		this.initParams.UseSoilwat = initParams.UseSoilwat;
+	}
+	
+	//public 
+	
+	public void start() {
 
 		  int year, iter, incr;
 		  boolean killedany;
 
 		  logged = false;
-		  //atexit(check_log);
-		  /* provides a way to inform user that something
-		   * was logged.  see generic.h */
 
-
-		  init_args(args);
-
-		  if(UseGrid == true) {
+		  if(this.initParams.UseGrid == true) {
 		  	//runGrid();
 		  	return;
 		  }
 
 		  parm_Initialize(0);
 
-		  if (UseSoilwat)
-		    SXW_Init(true);
+		  //if (this.initParams.UseSoilwat)
+		    //SXW_Init(true);
 
 		  incr = (int) ((float)Globals.runModelIterations/10);
 		  if (incr == 0) incr = 1;
@@ -125,7 +160,7 @@ public class Control {
 		System.out.println(s);
 	}
 	
-	void init_args(String[] args) {
+	private void init_args(String[] args, InitParams initParams) {
 		/*
 		 * to add an option: - include it in opts[] - set a flag in valopts
 		 * indicating no value (0), value required (1), or value optional (-1),
@@ -155,7 +190,7 @@ public class Control {
 
 		/* Defaults */
 		// parm_SetFirstName("files.in");
-		UseSoilwat = QuietMode = EchoInits = UseSeedDispersal = false;
+		initParams.UseSoilwat = initParams.QuietMode = initParams.EchoInits = UseSeedDispersal = false;
 		// SXW.debugfile = null;
 		// progfp = stderr;
 
@@ -213,16 +248,16 @@ public class Control {
 				break; /* -f */
 
 			case 2:
-				QuietMode = true;
+				initParams.QuietMode = true;
 				break; /* -q */
 
 			case 3:
-				UseSoilwat = true; /* -s */
+				initParams.UseSoilwat = true; /* -s */
 				// SXW.debugfile = (char *) Str_Dup(str);
 				break;
 
 			case 4:
-				EchoInits = true;
+				initParams.EchoInits = true;
 				break; /* -e */
 
 			case 5: // progfp = stdout; /* -p */
@@ -230,7 +265,7 @@ public class Control {
 				break;
 
 			case 6:
-				UseGrid = true;
+				initParams.UseGrid = true;
 				break; /* -g */
 
 			default:

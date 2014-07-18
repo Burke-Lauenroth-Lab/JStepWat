@@ -11,6 +11,9 @@ import stepwat.LogFileIn;
 import stepwat.input.Input;
 
 public class Rgroup extends Input {
+	
+	public static final int MAX_RGROUPS = 10;
+	
 	public static final String[] Comments = {"# Rgroup input definition file STEPPEWAT\n"+
 			"# resource-group-level information\n"+
 			"\n"+
@@ -113,7 +116,7 @@ public class Rgroup extends Input {
 		/**
 		 * establish annually if 1; if 0, establishment for this group is random from year to year.
 		 */
-		public int estann;
+		public boolean estann;
 		/**
 		 * switch to turn off this group, ie, don't produce any of the plants in this group.  1=on, 0=off.
 		 */
@@ -130,7 +133,7 @@ public class Rgroup extends Input {
 		 * frequency to kill.  if < 1, yearly probability, if > 1 yearly interval, after start year (start).<br>
 		 * Overrides killyr. See also disturbances in environmental parameter file.
 		 */
-		public float killfreq;
+		public int killfreq;
 		/**
 		 * year at which all group members are extirpated<br>
 		 * (without recovery) from the plot. 0==don't use, >0 == year # 
@@ -142,7 +145,7 @@ public class Rgroup extends Input {
 		 * but others might be excluded for testing purposes.<br>
 		 * 0 = don't use; 1 = use.<br>
 		 */
-		public int mort;
+		public boolean mort;
 		/**
 		 * extra growth factor; if > 0, plants can convert "extra" ppt<br>
 		 * into ephemeral (this year's) biomass by grams_extra_biomass = mm_extra_ppt * xgrow_factor
@@ -153,12 +156,12 @@ public class Rgroup extends Input {
 		 */
 		public int veg_prod_type;
 		
-		public GroupType(String name, float space, float density, int maxest, float slow, int stretch, boolean xres, int estann, boolean on,
-				int startyr, int killyr, float killfreq, int extirp, int mort, float xgrow, int veg_prod_type) {
+		public GroupType(String name, float space, float density, int maxest, float slow, int stretch, boolean xres, boolean estann, boolean on,
+				int startyr, int killyr, int killfreq, int extirp, boolean mort, float xgrow, int veg_prod_type) {
 			setValues(name, space, density, maxest, slow, stretch, xres, estann, on, startyr, killyr, killfreq, extirp, mort, xgrow, veg_prod_type);
 		}
-		public void setValues(String name, float space, float density, int maxest, float slow, int stretch, boolean xres, int estann, boolean on,
-				int startyr, int killyr, float killfreq, int extirp, int mort, float xgrow, int veg_prod_type) {
+		public void setValues(String name, float space, float density, int maxest, float slow, int stretch, boolean xres, boolean estann, boolean on,
+				int startyr, int killyr, int killfreq, int extirp, boolean mort, float xgrow, int veg_prod_type) {
 			this.name = name;
 			this.space = space;
 			this.density = density;
@@ -347,15 +350,17 @@ public class Rgroup extends Input {
 				float slow = Float.parseFloat(values[4]);
 				int stretch = Integer.parseInt(values[5]);
 				boolean xres = Integer.parseInt(values[6])>0 ? true : false;
-				int estann = Integer.parseInt(values[7]);
+				boolean estann = Integer.parseInt(values[7])>0 ? true : false;
 				boolean on = Integer.parseInt(values[8])>0 ? true : false;
 				int startyr = Integer.parseInt(values[9]);
 				int killyr = Integer.parseInt(values[10]);
-				float killfreq = Float.parseFloat(values[11]);
+				int killfreq = Integer.parseInt(values[11]);
 				int extirp = Integer.parseInt(values[12]);
-				int mort = Integer.parseInt(values[13]);
+				boolean mort = Integer.parseInt(values[13])>0 ? true : false;
 				float xgrow = Float.parseFloat(values[14]);
 				int veg_prod_type = Integer.parseInt(values[15]);
+				if(RGroup_Name2Index(name) != -1)
+					f.LogError(LogFileIn.LogMode.ERROR, "rgroup.in read : group "+name+" already defined.");
 				groups.add(new GroupType(name, space, density, maxest, slow, stretch, xres, estann, on, startyr, killyr, killfreq, extirp, mort, xgrow, veg_prod_type));
 			} catch(NumberFormatException e) {
 				f.LogError(LogFileIn.LogMode.ERROR, "rgroup.in read : Could not convert group values to number.");
@@ -372,6 +377,8 @@ public class Rgroup extends Input {
 				float wetint = Float.valueOf(values[4]);
 				float dryslope = Float.valueOf(values[5]);
 				float dryint = Float.valueOf(values[6]);
+				if(ResourceParams_Name2Index(name) != -1)
+					f.LogError(LogFileIn.LogMode.ERROR, "rgroup.in read : Resource Parameters "+name+" already defined.");
 				resourceParameters.add(new ResourceParameters(name, nslope, nint, wetslope, wetint, dryslope, dryint));
 			} catch(NumberFormatException e) {
 				f.LogError(LogFileIn.LogMode.ERROR, "rgroup.in read : Could not convert Resource Parameters values to number.");
@@ -386,6 +393,8 @@ public class Rgroup extends Input {
 				float gint = Float.valueOf(values[2]);
 				float mslope = Float.valueOf(values[3]);
 				float mint = Float.valueOf(values[4]);
+				if(SucculentParams_Name2Index(name) != -1)
+					f.LogError(LogFileIn.LogMode.ERROR, "rgroup.in read : Succulents Parameters "+name+" already defined.");
 				succulentParams.add(new SucculentParams(name, gslope, gint, mslope, mint));
 			} catch(NumberFormatException e) {
 				f.LogError(LogFileIn.LogMode.ERROR, "rgroup.in read : Could not convert Succulents Parameters values to number.");
@@ -438,5 +447,63 @@ public class Rgroup extends Input {
 		lines.add("");
 		lines.add("[end]  # section end\n");
 		java.nio.file.Files.write(RgroupInPath, lines, StandardCharsets.UTF_8);
+	}
+	
+	public boolean verify() throws Exception {
+		LogFileIn f = stepwat.LogFileIn.getInstance();
+		
+		if(nGrpEstab < 1 || nGrpEstab > MAX_RGROUPS) {
+			f.LogError(LogFileIn.LogMode.WARN, "rgroup.in verify : GrpEstab needs to be between 1 and 10.");
+			return false;
+		}
+		
+		for(ResourceParameters rparm : resourceParameters) {
+			if(RGroup_Name2Index(rparm.name)<0) {
+				f.LogError(LogFileIn.LogMode.WARN, "rgroup.in verify : ResourceParameters "+rparm.name+" not defined in group section.");
+				return false;
+			}
+		}
+		
+		for(SucculentParams sparm : succulentParams) {
+			if(RGroup_Name2Index(sparm.name)<0) {
+				f.LogError(LogFileIn.LogMode.WARN, "rgroup.in verify : SucculentParams "+sparm.name+" not defined in group section.");
+				return false;
+			}
+		}
+		
+		return true;
+	}
+	
+	private int RGroup_Name2Index(String name) {
+		int index = -1;
+		for (int i=0; i<groups.size(); i++) {
+			if(groups.get(i).name.compareTo(name) == 0) {
+				index = i;
+				break;
+			}
+		}
+		return index;
+	}
+	
+	private int ResourceParams_Name2Index(String name) {
+		int index = -1;
+		for (int i=0; i<resourceParameters.size(); i++) {
+			if(resourceParameters.get(i).name.compareTo(name) == 0) {
+				index = i;
+				break;
+			}
+		}
+		return index;
+	}
+	
+	private int SucculentParams_Name2Index(String name) {
+		int index = -1;
+		for (int i=0; i<succulentParams.size(); i++) {
+			if(succulentParams.get(i).name.compareTo(name) == 0) {
+				index = i;
+				break;
+			}
+		}
+		return index;
 	}
 }
