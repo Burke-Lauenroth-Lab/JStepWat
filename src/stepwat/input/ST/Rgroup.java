@@ -60,7 +60,7 @@ public class Rgroup extends Input {
 			"# xgrow = extra growth factor; if > 0, plants can convert 'extra' ppt\n"+
 			"#         into ephemeral (this year's) biomass by\n"+
 			"#         grams_extra_biomass = mm_extra_ppt * xgrow_factor\n"+
-			"# veg_prod_type = 1 for tree, 2 for shrub, & 3 for grass.  Refer to soilwat's VegProd types in VegProd.h.\n"+
+			"# veg_prod_type = 1 for tree, 2 for shrub, & 3 for grass.  Refer to soilwat's VegProd types in VegProd.h."+
 			"\n",
 			//break
 			"#=============================================================\n"+
@@ -76,7 +76,7 @@ public class Rgroup extends Input {
 			//break
 			"#=============================================================\n"+
 			"# Parameters for wet-year growth modifiers (usu. succulents)\n"+
-			"# name = name used in list above.\n"+
+			"# name = name used in list above. One set of succulent parameters.\n"+
 			"# gslope = slope for growth reduction in wet years (eqn 10)\n"+
 			"# gint   = intercept ''     ''      ''\n"+
 			"# mslope = slope for mortality in wet years (eqn 16)\n"+
@@ -85,6 +85,12 @@ public class Rgroup extends Input {
 			};
 	
 	public class GroupType implements Comparable<GroupType> {
+		/**
+		 * The id is a unique id to each resource group. It is used to link<br>
+		 * species to their group. If read in from files, this will be the original<br>
+		 * index of the resource group. Must be from 0 to (# of species - 1).
+		 */
+		public int id;
 		/**
 		 * a name to give the group
 		 */
@@ -156,12 +162,13 @@ public class Rgroup extends Input {
 		 */
 		public int veg_prod_type;
 		
-		public GroupType(String name, float space, float density, int maxest, float slow, int stretch, boolean xres, boolean estann, boolean on,
+		public GroupType(int id, String name, float space, float density, int maxest, float slow, int stretch, boolean xres, boolean estann, boolean on,
 				int startyr, int killyr, int killfreq, int extirp, boolean mort, float xgrow, int veg_prod_type) {
-			setValues(name, space, density, maxest, slow, stretch, xres, estann, on, startyr, killyr, killfreq, extirp, mort, xgrow, veg_prod_type);
+			setValues(id, name, space, density, maxest, slow, stretch, xres, estann, on, startyr, killyr, killfreq, extirp, mort, xgrow, veg_prod_type);
 		}
-		public void setValues(String name, float space, float density, int maxest, float slow, int stretch, boolean xres, boolean estann, boolean on,
+		public void setValues(int id, String name, float space, float density, int maxest, float slow, int stretch, boolean xres, boolean estann, boolean on,
 				int startyr, int killyr, int killfreq, int extirp, boolean mort, float xgrow, int veg_prod_type) {
+			this.id = id;
 			this.name = name;
 			this.space = space;
 			this.density = density;
@@ -183,7 +190,13 @@ public class Rgroup extends Input {
 			return name.length();
 		}
 		public String toString(int width) {
-			return String.format("%-"+Integer.toString(width)+"s  %-07.4f  %-07.4f  %-6d %-07.4f  %-7d %-4d  %-6d  %-2d  %-7d %-6d  %-07.4f  %-6d  %-4d %-07.4f %-4d", name, space,density,maxest,slow,stretch,xres?1:0,estann,on?1:0,startyr,killyr,extirp,mort,xgrow,veg_prod_type);
+			String line = String.format("%-"+Integer.toString(width)+"s", name);
+			line += String.format("  %-7.4f  %-7.4f %-6d", space,density,maxest);
+			line += String.format(" %-7.4f  %-7d %-4d  %-6d", slow,stretch,xres?1:0,estann?1:0,on?1:0);
+			line += String.format("  %-2d  %-7d %-6d  %-7d",on?1:0,startyr,killyr,killfreq);
+			line += String.format("  %-6d  %-4d %-7.4f %-4d", extirp,mort?1:0,xgrow,veg_prod_type);
+			return line;
+			//return String.format("%-"+Integer.toString(width)+"s  %-07.4f  %-07.4f  %-6d %-07.4f  %-7d %-4d  %-6d  %-2d  %-7d %-6d  %-7d  %-6d  %-4d %-07.4f %-4d", name, space,density,maxest,slow,stretch,xres?1:0,estann,on?1:0,startyr,killyr,killfreq,extirp,mort?1:0,xgrow,veg_prod_type);
 		}
 		@Override
 		public int compareTo(GroupType o) {
@@ -234,7 +247,7 @@ public class Rgroup extends Input {
 			this.dryint = dryint;
 		}
 		public String toString(int width) {
-			return String.format("%-"+Integer.toString(width)+"s  %-07.5f  %-07.5f  %-07.5f  %-07.5f  %-07.5f  %-07.5f", name, nslope, nint,wetslope,wetint,dryslope,dryint);
+			return String.format("%-"+Integer.toString(width)+"s  %-7.5f  %-7.5f  %-7.5f  %-7.5f  %-7.5f  %-7.5f", name, nslope, nint,wetslope,wetint,dryslope,dryint);
 		}
 		@Override
 		public int compareTo(ResourceParameters o) {
@@ -275,7 +288,7 @@ public class Rgroup extends Input {
 			this.mint = mint;
 		}
 		public String toString(int width) {
-			return String.format("%-"+Integer.toString(width)+"s  %-07.4f  %-07.4f  %-07.4f  %-07.4f", name, gslope, gint,mslope,mint);
+			return String.format("%-"+Integer.toString(width)+"s  %-7.4f  %-7.4f  %-7.4f  %-7.4f", name, gslope, gint,mslope,mint);
 		}
 		@Override
 		public int compareTo(SucculentParams o) {
@@ -317,7 +330,7 @@ public class Rgroup extends Input {
 					}
 					break;
 				default:
-					if(values[0] == "[end]") {
+					if(values[0].compareTo("[end]") == 0) {
 						nGroupNumber++;
 					} else {
 						readGroup(nGroupNumber, values, f);
@@ -343,6 +356,7 @@ public class Rgroup extends Input {
 			if(values.length != 16)
 				f.LogError(LogFileIn.LogMode.ERROR, "rgroup.in read : Group definitions Expected 16 value.");
 			try {
+				int id = groups.size();
 				String name = values[0];
 				float space = Float.parseFloat(values[1]);
 				float density = Float.parseFloat(values[2]);
@@ -361,7 +375,7 @@ public class Rgroup extends Input {
 				int veg_prod_type = Integer.parseInt(values[15]);
 				if(RGroup_Name2Index(name) != -1)
 					f.LogError(LogFileIn.LogMode.ERROR, "rgroup.in read : group "+name+" already defined.");
-				groups.add(new GroupType(name, space, density, maxest, slow, stretch, xres, estann, on, startyr, killyr, killfreq, extirp, mort, xgrow, veg_prod_type));
+				groups.add(new GroupType(id, name, space, density, maxest, slow, stretch, xres, estann, on, startyr, killyr, killfreq, extirp, mort, xgrow, veg_prod_type));
 			} catch(NumberFormatException e) {
 				f.LogError(LogFileIn.LogMode.ERROR, "rgroup.in read : Could not convert group values to number.");
 			}
@@ -422,27 +436,27 @@ public class Rgroup extends Input {
 	public void write(Path RgroupInPath) throws IOException {
 		List<String> lines = new ArrayList<String>();
 		lines.add(Comments[0]);
-		lines.add(String.valueOf(nGrpEstab));
+		lines.add("  "+String.valueOf(nGrpEstab));
 		lines.add("[end]  # section end\n");
 		lines.add(Comments[1]);
 		int width = maxNameLength();
-		lines.add("# name"+new String(new char[width-6]).replace("\0", " ")+"space   density maxest slow    stretch xres  estann  on  startyr killyr  killfrq  extirp  mort  xgrow  veg_prod_type");
+		lines.add("# name"+new String(new char[width-3]).replace("\0", " ")+"space   density maxest slow    stretch xres  estann  on  startyr killyr  killfrq  extirp  mort  xgrow  veg_prod_type");
 		for (GroupType group : groups) {
 			lines.add(group.toString(width));
 		}
 		lines.add("");
 		lines.add("[end]  # section end\n");
 		lines.add(Comments[2]);
-		lines.add("# name"+new String(new char[width-6]).replace("\0", " ")+"nslope   nint     wetslope wetint   dryslope dryint");
+		lines.add("# name"+new String(new char[width-3]).replace("\0", " ")+"nslope   nint     wetslope wetint   dryslope dryint");
 		for(ResourceParameters rparm : resourceParameters) {
 			lines.add(rparm.toString(width));
 		}
 		lines.add("");
 		lines.add("[end]  # section end\n");
 		lines.add(Comments[3]);
-		lines.add("# name"+new String(new char[width-6]).replace("\0", " ")+"gslope  gint  mslope  gint");
+		lines.add("# name"+new String(new char[width-3]).replace("\0", " ")+"gslope  gint     mslope   gint");
 		for(SucculentParams sparm : succulentParams) {
-			lines.add(sparm.toString());
+			lines.add(sparm.toString(width));
 		}
 		lines.add("");
 		lines.add("[end]  # section end\n");
@@ -462,6 +476,15 @@ public class Rgroup extends Input {
 				f.LogError(LogFileIn.LogMode.WARN, "rgroup.in verify : ResourceParameters "+rparm.name+" not defined in group section.");
 				return false;
 			}
+		}
+		if(resourceParameters.size() != groups.size()) {
+			f.LogError(LogFileIn.LogMode.WARN, "rgroup.in verify : ResourceParameters is missing a group.");
+			return false;
+		}
+		
+		if(succulentParams.size() > 1) {
+			f.LogError(LogFileIn.LogMode.WARN, "rgroup.in verify : SucculentParams only define one set of params");
+			return false;
 		}
 		
 		for(SucculentParams sparm : succulentParams) {
@@ -485,7 +508,7 @@ public class Rgroup extends Input {
 		return index;
 	}
 	
-	private int ResourceParams_Name2Index(String name) {
+	public int ResourceParams_Name2Index(String name) {
 		int index = -1;
 		for (int i=0; i<resourceParameters.size(); i++) {
 			if(resourceParameters.get(i).name.compareTo(name) == 0) {
@@ -496,7 +519,7 @@ public class Rgroup extends Input {
 		return index;
 	}
 	
-	private int SucculentParams_Name2Index(String name) {
+	public int SucculentParams_Name2Index(String name) {
 		int index = -1;
 		for (int i=0; i<succulentParams.size(); i++) {
 			if(succulentParams.get(i).name.compareTo(name) == 0) {

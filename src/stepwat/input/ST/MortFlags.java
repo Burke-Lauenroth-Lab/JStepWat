@@ -126,9 +126,12 @@ public class MortFlags extends Input {
 	public void write(Path SpeciesInPath) throws IOException {
 		List<String> lines = new ArrayList<String>();
 		lines.add(Comments[0]);
-		lines.add("# Sumry Yearly Header Sep YrNum Disturb PPT PClass Temp GrpBmass GrpPR GrpSize SppBmass Indivs");
-		lines.add((sumry?"y":"n")+"\t"+(yearly?"y":"n")+"\t"+(header?"y":"n")+"\t"+sep+"\t"+(group?"y":"n")+"\t"+(species?"y":"n"));
+		lines.add("# Sumry Yearly Header Sep Group Species");
+		lines.add("  "+ds(sumry?"y":"n",5)+ds(yearly?"y":"n",6)+ds(header?"y":"n",6)+ds(sep,3)+ds(group?"y":"n",5)+ds(species?"y":"n",7));
 		lines.add(Comments[1]);
 		java.nio.file.Files.write(SpeciesInPath, lines, StandardCharsets.UTF_8);
+	}
+	private String ds(String t, int width) {
+		return String.format("%-"+String.valueOf(width)+"s", t)+" ";
 	}
 }

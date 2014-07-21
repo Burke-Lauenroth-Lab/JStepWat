@@ -65,6 +65,7 @@ public class Model extends Input {
 				nFileItemsRead++;
 			}
 		}
+		this.data = true;
 	}
 	
 	public void write(Path ModelInPath) throws IOException {
@@ -90,7 +91,7 @@ public class Model extends Input {
 		lines.add("#       it doesn't hurt to set it to 0 always.");
 		lines.add("");
 		lines.add("# niter nyrs  seed");
-		lines.add(String.valueOf(nIterations)+"\t"+String.valueOf(nYears)+"\t"+String.valueOf(seed));
+		lines.add("  " + String.valueOf(nIterations)+"\t"+String.valueOf(nYears)+"\t\t"+String.valueOf(seed));
 		java.nio.file.Files.write(ModelInPath, lines, StandardCharsets.UTF_8);
 	}
 }

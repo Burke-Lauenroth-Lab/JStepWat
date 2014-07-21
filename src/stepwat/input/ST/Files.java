@@ -131,8 +131,8 @@ public class Files extends Input {
 		lines.add(bmassavg + getSpacing(maxStringLength-bmassavg.length()) + "#output");
 		lines.add("");
 		lines.add(mortflags + getSpacing(maxStringLength-mortflags.length()) + "#mort flags... (for setting up the output I think)");
-		lines.add(bmasspre + getSpacing(maxStringLength-bmasspre.length()) + "#output");
-		lines.add(bmassavg + getSpacing(maxStringLength-bmassavg.length()) + "#output");
+		lines.add(mortpre + getSpacing(maxStringLength-mortpre.length()) + "#output");
+		lines.add(mortavg + getSpacing(maxStringLength-mortavg.length()) + "#output");
 		lines.add("");
 		lines.add(sxw + getSpacing(maxStringLength-sxw.length()) + "#");
 		java.nio.file.Files.write(gridFilesIn, lines, StandardCharsets.UTF_8);

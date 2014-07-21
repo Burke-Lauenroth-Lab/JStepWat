@@ -3,11 +3,29 @@ package stepwat.internal;
 import java.nio.file.Path;
 
 import stepwat.input.ST.Environment;
+import stepwat.input.ST.Files;
 import stepwat.input.ST.Model;
 import stepwat.input.ST.Plot;
 import stepwat.input.ST.Rgroup;
 
 public class Globals {
+	public static final int NFILES=13;
+	
+	public static final int F_First=0;
+	public static final int F_Log=1;
+	public static final int F_Model=2;
+	public static final int F_Env=3;
+	public static final int F_Plot=4;
+	public static final int F_RGroup=5;
+	public static final int F_Species=6;
+	public static final int F_BMassFlag=7;
+	public static final int F_BMassPre=8;
+	public static final int F_BMassAvg=9;
+	public static final int F_MortFlag=10;
+	public static final int F_MortPre=11;
+	public static final int F_MortAvg=12;
+	public static final int F_SXW=13;
+	public static final int F_EXE=14;
 	
 	public static final int Intcpt=0;
 	public static final int Slope=1;
@@ -22,42 +40,69 @@ public class Globals {
 	public static final int WarmSeason=0;
 	
 	public class PPT {
-		public float avg, std;
-		public int min, max, dry, wet;
+		protected float avg, std;
+		protected int min, max, dry, wet;
 	}
 
 	public class Temperature {
-		public float avg, std, min, max;
+		protected float avg, std, min, max;
 	}
 
 	public class Fecalpats {
-		public boolean use;
-		public float occur, removal, recol[]; /* 1 elem. for slope and intercept */
-
-		public Fecalpats() {
+		protected boolean use;
+		protected float occur, removal; /* 1 elem. for slope and intercept */
+		protected float[] recol;
+		
+		protected Fecalpats() {
 			recol = new float[2];
 		}
 	}
 
 	public class AntMounds {
-		public boolean use;
-		public float occur;
-		public int minyr, maxyr;
+		protected boolean use;
+		protected float occur;
+		protected int minyr, maxyr;
 	}
 
 	public class Burrows {
-		public boolean use;
-		public float occur;
-		public int minyr;
+		protected boolean use;
+		protected float occur;
+		protected int minyr;
 	}
 	
 	public class OutFiles {
-		Path year;
-		Path sumry;
-		int suffixwidth;
-		String headerLine;
+		protected Path year;
+		protected Path sumry;
+		protected int suffixwidth;
+		protected String headerLine;
+		
+		public Path getYear() {
+			return year;
+		}
+		public void setYear(Path year) {
+			this.year = year;
+		}
+		public Path getSumry() {
+			return sumry;
+		}
+		public void setSumry(Path sumry) {
+			this.sumry = sumry;
+		}
+		public int getSuffixwidth() {
+			return suffixwidth;
+		}
+		public void setSuffixwidth(int suffixwidth) {
+			this.suffixwidth = suffixwidth;
+		}
+		public String getHeaderLine() {
+			return headerLine;
+		}
+		public void setHeaderLine(String headerLine) {
+			this.headerLine = headerLine;
+		}
 	}
 
+	public Rand random;
 	public PPT ppt = new PPT();
 	public Temperature temp = new Temperature();
 	public Fecalpats pat = new Fecalpats();
@@ -65,32 +110,91 @@ public class Globals {
 	public Burrows burrow = new Burrows();
 	public OutFiles bmass = new OutFiles(), mort = new OutFiles();
 
-	public float plotsize, /* size of plot in square meters */
-	gsppt_prop, /* proportion of ppt during growing season */
-	tempparm[][]; /* three parms for Warm/Cool growth mod */
-	public int runModelYears, /* number of years to run the model */
-	Max_Age, /* oldest plant; same as runModelYears for now */
-	currYear, runModelIterations, /* run model this many times for statistics */
-	currIter, grpCount, /* number of groups defined */
-	sppCount, /* number of species defined */
-	grpMaxEstab, /* max species groups that can successfully */
-	/* establish in a year */
-	nCells; /*
-			 * number of cells to use in Grid, only applicable if grid function
-			 * is being used
-			 */
-	public int randseed; /* random seed from input file */
+	/**
+	 * Use Grid option
+	 */
+	protected boolean UseGrid;
+	/**
+	 * Use Seed Dispersal
+	 */
+	protected boolean UseSeedDispersal;
+	/**
+	 * Where all the files.in paths are found.
+	 * Access with static final ints with name of
+	 * the file name you want.
+	 */
+	protected String[] files = new String[NFILES];
+	/**
+	 * size of plot in square meters
+	 */
+	protected float plotsize;
+	/**
+	 * proportion of ppt during growing season
+	 */
+	protected float gsppt_prop;
+	/**
+	 * three parms for Warm/Cool growth mod
+	 */
+	protected float[][] tempparm;
+	/**
+	 * number of years to run the model
+	 */
+	protected int runModelYears;
+	/**
+	 * oldest plant; same as runModelYears for now
+	 */
+	protected int Max_Age;
+	/**
+	 * run model this many times for statistics
+	 */
+	protected int currYear, runModelIterations;
+	/**
+	 * number of groups defined
+	 */
+	protected int currIter, grpCount;
+	/**
+	 * number of species defined
+	 */
+	protected int sppCount;
+	/**
+	 * max species groups that can successfully
+	 * establish in a year
+	 */
+	protected int grpMaxEstab;
+	/**
+	 * number of cells to use in Grid, only applicable if grid function is being used
+	 */
+	protected int nCells;
+	/**
+	 * random seed from input file
+	 */
+	protected int randseed;
 	
 	public Globals() {
 		tempparm = new float[2][3];
 	}
 	
-	public void setInput(Model model, Environment envir, Plot plot, Rgroup rGroup) {
+	public void setInput(String filesIn, Files files, Model model, Environment envir, Plot plot, Rgroup rGroup) {
+		//Files Inputs
+		this.files[F_First] = filesIn;
+		this.files[F_Log] = files.logfile;
+		this.files[F_Model] = files.model;
+		this.files[F_Env] = files.env;
+		this.files[F_Plot] = files.plot;
+		this.files[F_RGroup] = files.rgroup;
+		this.files[F_Species] = files.species;
+		this.files[F_BMassFlag] = files.bmassflags;
+		this.files[F_BMassPre] = files.bmasspre;
+		this.files[F_BMassAvg] = files.bmassavg;
+		this.files[F_MortFlag] = files.mortflags;
+		this.files[F_MortPre] = files.mortpre;
+		this.files[F_MortAvg] = files.mortavg;
+		this.files[F_SXW] = files.sxw;
 		//Set Model Inputs
-		this.Max_Age = this.runModelYears = model.nYears;
-		this.runModelIterations = model.nIterations;
+		this.setMax_Age(this.setRunModelYears(model.nYears));
+		this.setRunModelIterations(model.nIterations);
 		this.bmass.suffixwidth = this.mort.suffixwidth = String.valueOf(model.nIterations).length();
-		this.randseed = model.seed==0?0:-Math.abs(model.seed);
+		this.setRandseed(model.seed==0?0:-Math.abs(model.seed));
 		//Set Envir Inputs
 		this.ppt.avg = envir.precip.avg;
 		this.ppt.std = envir.precip.std;
@@ -98,7 +202,7 @@ public class Globals {
 		this.ppt.max = envir.precip.max;
 		this.ppt.dry = envir.precip.dry;
 		this.ppt.wet = envir.precip.wet;
-		this.gsppt_prop = envir.precip.gsppt;
+		this.setGsppt_prop(envir.precip.gsppt);
 		
 		this.temp.avg = envir.temp.avg;
 		this.temp.std = envir.temp.std;
@@ -128,8 +232,105 @@ public class Globals {
 		this.mound.use = this.mound.use;
 		this.burrow.use = this.burrow.use;
 		//Set plot Input
-		this.plotsize = plot.plotsize;
+		this.setPlotsize(plot.plotsize);
 		//rGroup
-		this.grpMaxEstab = rGroup.nGrpEstab;
+		this.setGrpMaxEstab(rGroup.nGrpEstab);
+	}
+
+	public float getPlotsize() {
+		return plotsize;
+	}
+
+	public void setPlotsize(float plotsize) {
+		this.plotsize = plotsize;
+	}
+
+	public float getGsppt_prop() {
+		return gsppt_prop;
+	}
+
+	public void setGsppt_prop(float gsppt_prop) {
+		this.gsppt_prop = gsppt_prop;
+	}
+
+	public int getRunModelYears() {
+		return runModelYears;
+	}
+
+	public int setRunModelYears(int runModelYears) {
+		this.runModelYears = runModelYears;
+		return runModelYears;
+	}
+
+	public int getMax_Age() {
+		return Max_Age;
+	}
+
+	public void setMax_Age(int max_Age) {
+		Max_Age = max_Age;
+	}
+
+	public int getRunModelIterations() {
+		return runModelIterations;
+	}
+
+	public void setRunModelIterations(int runModelIterations) {
+		this.runModelIterations = runModelIterations;
+	}
+
+	public int getCurrYear() {
+		return currYear;
+	}
+
+	public void setCurrYear(int currYear) {
+		this.currYear = currYear;
+	}
+
+	public int getCurrIter() {
+		return currIter;
+	}
+
+	public void setCurrIter(int currIter) {
+		this.currIter = currIter;
+	}
+
+	public int getGrpCount() {
+		return grpCount;
+	}
+
+	public void setGrpCount(int grpCount) {
+		this.grpCount = grpCount;
+	}
+
+	public int getSppCount() {
+		return sppCount;
+	}
+
+	public void setSppCount(int sppCount) {
+		this.sppCount = sppCount;
+	}
+
+	public int getGrpMaxEstab() {
+		return grpMaxEstab;
+	}
+
+	public void setGrpMaxEstab(int grpMaxEstab) {
+		this.grpMaxEstab = grpMaxEstab;
+	}
+
+	public int getnCells() {
+		return nCells;
+	}
+
+	public void setnCells(int nCells) {
+		this.nCells = nCells;
+	}
+
+	public int getRandseed() {
+		return randseed;
+	}
+
+	public void setRandseed(int randseed) {
+		this.randseed = randseed;
 	}
 }

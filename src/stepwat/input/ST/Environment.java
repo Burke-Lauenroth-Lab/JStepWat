@@ -52,7 +52,7 @@ public class Environment extends Input {
 			"# slope = slope for eqn 17 for time to recolonization\n"+
 			"# intcpt = intercept for eqn 17 for time to recolonization\n"+
 			"\n"+
-			"# use  occur removal  slope   intcpt\n",
+			"# use  occur removal  slope   intcpt",
 			"\n# -------------------------------------------------------------\n"+
 			"# These are the parameters associated with ant mounds.\n"+
 			"\n"+
@@ -86,7 +86,7 @@ public class Environment extends Input {
 			"# wtmpa = warm season additive factor\n"+
 			"# wtmp1 = warm season slope for linear term\n"+
 			"# wtmp2 = warm season slope for quadratic term\n"+
-			"#  ctmpa   ctmp1   ctmp2  wtmpa  wtmp1  wtmp2"};
+			"#  ctmpa   ctmp1    ctmp2    wtmpa    wtmp1    wtmp2"};
 	public class Precipitation {
 		/***
 		 * Units (mm)
@@ -139,8 +139,9 @@ public class Environment extends Input {
 		}
 		
 		public String toString() {
-			return " "+String.valueOf(avg)+"\t"+String.valueOf(std)+"\t"+String.valueOf(min)+"\t"+String.valueOf(max)+"\t"+
-					String.valueOf(dry)+"\t"+String.valueOf(wet)+"\t"+String.valueOf(gsppt);
+			return String.format(" %-5.1f  %-4.1f  %-3d %-3d %-3d %-3d %-5.3f", avg, std, min, max, dry, wet, gsppt);
+			//return " "+String.valueOf(avg)+"\t"+String.valueOf(std)+"\t"+String.valueOf(min)+"\t"+String.valueOf(max)+"\t"+
+			//		String.valueOf(dry)+"\t"+String.valueOf(wet)+"\t"+String.valueOf(gsppt);
 		}
 	}
 	
@@ -177,7 +178,8 @@ public class Environment extends Input {
 		}
 		
 		public String toString() {
-			return " "+String.valueOf(avg)+"\t"+String.valueOf(std)+"\t"+String.valueOf(min)+"\t"+String.valueOf(max);
+			return String.format("%-5.2f %-4.2f %-3.1f %-3.1f", avg,std,min,max);
+			//return " "+String.valueOf(avg)+"\t"+String.valueOf(std)+"\t"+String.valueOf(min)+"\t"+String.valueOf(max);
 		}
 	}
 	
@@ -227,8 +229,9 @@ public class Environment extends Input {
 		}
 		
 		public String toString() {
-			return " "+String.valueOf(use)+"\t"+String.valueOf(occur)+"\t"+String.valueOf(removal)+"\t"+String.valueOf(slope)+"\t"+
-					String.valueOf(intcpt);
+			return String.format("  %-3d  %-5.3f %-7.4f  %-5.4f   %-6.3f", use?1:0,occur,removal,slope,intcpt);
+			//return " "+String.valueOf(use?1:0)+"\t"+String.valueOf(occur)+"\t"+String.valueOf(removal)+"\t"+String.valueOf(slope)+"\t"+
+			//		String.valueOf(intcpt);
 		}
 	}
 	
@@ -270,7 +273,8 @@ public class Environment extends Input {
 		}
 		
 		public String toString() {
-			return " "+String.valueOf(use)+"\t"+String.valueOf(occur)+"\t"+String.valueOf(minyr)+"\t"+String.valueOf(maxyr);
+			return String.format("  %-3d  %-6.5f %-3d  %-3d", use?1:0, occur, minyr,maxyr);
+			//return " "+String.valueOf(use)+"\t"+String.valueOf(occur)+"\t"+String.valueOf(minyr)+"\t"+String.valueOf(maxyr);
 		}
 	}
 	
@@ -309,7 +313,8 @@ public class Environment extends Input {
 		}
 		
 		public String toString() {
-			return " "+String.valueOf(use)+"\t"+String.valueOf(occur)+"\t"+String.valueOf(minyr);
+			return String.format("  %-3d %8.7f %-3d", use?1:0,occur,minyr);
+			//return " "+String.valueOf(use)+"\t"+String.valueOf(occur)+"\t"+String.valueOf(minyr);
 		}
 	}
 	
@@ -365,8 +370,9 @@ public class Environment extends Input {
 		}
 		
 		public String toString() {
-			return " "+String.valueOf(ctmpa)+"\t"+String.valueOf(ctmp1)+"\t"+String.valueOf(ctmp2)+"\t"+String.valueOf(wtmpa)+"\t"+
-					String.valueOf(wtmp1)+"\t"+String.valueOf(wtmp2);
+			return String.format("  %-7.5f %-7.5f %-7.5f %-7.5f %-7.5f %-7.5f", ctmpa,ctmp1,ctmp2,wtmpa,wtmp1,wtmp2);
+			//return " "+String.valueOf(ctmpa)+"\t"+String.valueOf(ctmp1)+"\t"+String.valueOf(ctmp2)+"\t"+String.valueOf(wtmpa)+"\t"+
+			//		String.valueOf(wtmp1)+"\t"+String.valueOf(wtmp2);
 		}
 	}
 	

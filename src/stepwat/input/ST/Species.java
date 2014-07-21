@@ -62,7 +62,7 @@ public class Species extends Input {
 					+ "#      see also the same flag in group parameters file.\n"
 					+ "# dispersal = turn on/off seed dispersal for this species. 1=use, 0=don't use.\n"
 					+ "# 	dispersal is only applicable when using gridded option.\n"
-					+ "#\n" + "#\n" + "#\n",
+					+ "#\n" + "#\n" + "#",
 			"# ===============================================================================\n"
 					+ "# Additional parameters for annuals-only establishment.\n"
 					+ "#\n"
@@ -216,7 +216,7 @@ public class Species extends Input {
 			this.dispersal = dispersal;
 		}
 		public String toString() {
-			return String.format(" %-9s %-2d  %-3d  %-07.5f  %-05.3f %-4d %-7d %-07.5f  %-4d %-05.3f   %-6.5f  %-6s %-7d %-6d  %-06.4f  %-5d", name, rg, age, irate, ratep, slow, disturb, pestab, eind, minbio, maxbio, clonal?"y":"n", vegindv, tclass, cosurv, onoff?1:0, dispersal?1:0);
+			return String.format(" %-9s %-2d  %-3d  %-7.5f  %-5.3f %-4d %-7d %-7.5f  %-4d %-5.3f   %-6.3f  %-6s %-7d %-6d  %-6.4f  %-5d", name, rg, age, irate, ratep, slow, disturb, pestab, eind, minbio, maxbio, clonal?"y":"n", vegindv, tclass, cosurv, onoff?1:0, dispersal?1:0);
 		}
 		@Override
 		public int compareTo(SpeciesParams o) {
@@ -248,7 +248,7 @@ public class Species extends Input {
 			this.xdecay = xdecay;
 		}
 		public String toString() {
-			return String.format(" %-9s %-6d %-06.3f",name,viable,xdecay);
+			return String.format(" %-9s %-6d %-6.3f",name,viable,xdecay);
 		}
 		@Override
 		public int compareTo(AnnualsParams o) {
@@ -292,7 +292,7 @@ public class Species extends Input {
 		}
 		
 		public String toString() {
-			return String.format(" %-9s %-06.4f %-06.4f %-06.4f %-06.4f",name,vprop1,vprop2,vprop3,vprop4);
+			return String.format(" %-9s %-6.4f %-6.4f %-6.4f %-6.4f",name,vprop1,vprop2,vprop3,vprop4);
 		}
 		
 		@Override
@@ -354,7 +354,7 @@ public class Species extends Input {
 			this.vt = vt;
 		}
 		public String toString() {
-			return String.format(" %-6s %-9d  %-06.3f  %-06.3f  %-06.3f  %-04.3f %-04.4f   %-04.4f %-04.4f",name,dispersal?1:0,param1,pptDry,pptWet,pmin,pmax,h,vt);
+			return String.format(" %-6s %-9d  %-6.3f  %-6.3f  %-6.3f  %-4.3f  %-4.4f   %-4.3f %-4.3f",name,dispersal?1:0,param1,pptDry,pptWet,pmin,pmax,h,vt);
 		}
 		@Override
 		public int compareTo(SeedDispersalParam o) {
@@ -384,7 +384,7 @@ public class Species extends Input {
 				line = line.trim();
 				String[] values = line.split("#")[0].split("[ \t]+");// Remove comment  after data
 			
-				if(values[0] == "[end]") {
+				if(values[0].compareTo("[end]") == 0) {
 					nGroupNumber++;
 				} else {
 					readGroup(nGroupNumber, values, f);
@@ -420,7 +420,7 @@ public class Species extends Input {
 				int eind = Integer.valueOf(values[8]);
 				float minbio = Float.valueOf(values[9]);
 				float maxbio = Float.valueOf(values[10]);
-				boolean clonal = Integer.valueOf(values[11])>0 ? true : false;
+				boolean clonal = values[11].compareToIgnoreCase("y")==0 ? true : false;
 				int vegindv = Integer.valueOf(values[12]);
 				int tclass = Integer.valueOf(values[13]);
 				float cosurv = Float.valueOf(values[14]);
@@ -506,25 +506,25 @@ public class Species extends Input {
 		for(SpeciesParams species : speciesParams) {
 			lines.add(species.toString());
 		}
-		lines.add("\n[end]  # section end\n");
+		lines.add("\n[end]  # this marks the end of the species-specific parameters above\n");
 		lines.add(Comments[1]);
 		lines.add("# name     viable xdecay");
 		for (AnnualsParams annuals : annualsParams) {
 			lines.add(annuals.toString());
 		}
-		lines.add("\n[end]  # section end\n");
+		lines.add("\n[end]  # end of additional annuals-only parameters.\n");
 		lines.add(Comments[2]);
 		lines.add("# name     vprop1 vprop2 vprop3 vprop4");
 		for(SpeciesProbParam prob : speciesProbParam) {
 			lines.add(prob.toString());
 		}
-		lines.add("\n[end]  # section end\n");
+		lines.add("\n[end]  # this marks the end of the veg-prop parameters\n");
 		lines.add(Comments[3]);
-		lines.add("# name 	dispersal	param1  PPTdry  PPTwet	Pmin	Pmax	H	 VT");
+		lines.add("# name 	dispersal  param1  PPTdry   PPTwet   Pmin   Pmax     H      VT");
 		for(SeedDispersalParam seed : seedDispersalParam) {
 			lines.add(seed.toString());
 		}
-		lines.add("\n[end]  # section end");
+		lines.add("\n[end]  # this marks the end of the seed-dispersal parameters");
 		java.nio.file.Files.write(SpeciesInPath, lines, StandardCharsets.UTF_8);
 	}
 	
@@ -547,19 +547,25 @@ public class Species extends Input {
 		
 		for (SpeciesProbParam prob : speciesProbParam) {
 			if(Species_Name2Index(prob.name) < 0) {
-				f.LogError(LogFileIn.LogMode.WARN, "species.in verify : Annuals "+prob.name+" not defined in species section.");
+				f.LogError(LogFileIn.LogMode.WARN, "species.in verify : Species-specific probabilities "+prob.name+" not defined in species section.");
 				return false;
 			}
+		}
+		if(speciesProbParam.size() != speciesParams.size()) {
+			f.LogError(LogFileIn.LogMode.WARN, "species.in verify : Species-specific probabilities is missing species.");
+			return false;
 		}
 		
 		for (SeedDispersalParam seed : seedDispersalParam) {
 			if(Species_Name2Index(seed.name) < 0) {
-				f.LogError(LogFileIn.LogMode.WARN, "species.in verify : Annuals "+seed.name+" not defined in species section.");
+				f.LogError(LogFileIn.LogMode.WARN, "species.in verify : seed dispersal "+seed.name+" not defined in species section.");
 				return false;
 			}
 		}
-		
-		
+		if(seedDispersalParam.size() != speciesParams.size()) {
+			f.LogError(LogFileIn.LogMode.WARN, "species.in verify : seed dispersal is missing species.");
+			return false;
+		}
 		
 		return true;
 	}
@@ -576,7 +582,7 @@ public class Species extends Input {
 		return index;
 	}
 	
-	private int Annuals_Name2Index(String name) {
+	public int Annuals_Name2Index(String name) {
 		int index = -1;
 		for(int i=0; i<annualsParams.size(); i++) {
 			if(annualsParams.get(i).name.compareTo(name) == 0) {
@@ -587,7 +593,7 @@ public class Species extends Input {
 		return index;
 	}
 	
-	private int SpeciesProb_Name2Index(String name) {
+	public int SpeciesProb_Name2Index(String name) {
 		int index = -1;
 		for(int i=0; i<speciesProbParam.size(); i++) {
 			if(speciesProbParam.get(i).name.compareTo(name) == 0) {
@@ -598,7 +604,7 @@ public class Species extends Input {
 		return index;
 	}
 	
-	private int SeedDispersal_Name2Index(String name) {
+	public int SeedDispersal_Name2Index(String name) {
 		int index = -1;
 		for(int i=0; i<seedDispersalParam.size(); i++) {
 			if(seedDispersalParam.get(i).name.compareTo(name) == 0) {

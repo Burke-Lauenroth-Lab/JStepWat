@@ -178,20 +178,20 @@ public class BmassFlags extends Input {
 				case 0:
 					if(values.length != 14)
 						f.LogError(LogFileIn.LogMode.ERROR, "BmassFlags.in read : Expected 14 value.");
-					sumry = values[0]=="y"?true:false;
-					yearly = values[1]=="y"?true:false;
-					header = values[2]=="y"?true:false;
+					sumry = values[0].compareToIgnoreCase("y")==0?true:false;
+					yearly = values[1].compareToIgnoreCase("y")==0?true:false;
+					header = values[2].compareToIgnoreCase("y")==0?true:false;
 					sep = values[3];
-					yrnum = values[4]=="y"?true:false;
-					disturb = values[5]=="y"?true:false;
-					ppt = values[6]=="y"?true:false;
-					pclass = values[7]=="y"?true:false;
-					temp = values[8]=="y"?true:false;
-					grpBmass = values[9]=="y"?true:false;
-					grpPR = values[10]=="y"?true:false;
-					grpSize = values[11]=="y"?true:false;
-					sppBmass = values[12]=="y"?true:false;
-					indivs = values[13]=="y"?true:false;
+					yrnum = values[4].compareToIgnoreCase("y")==0?true:false;
+					disturb = values[5].compareToIgnoreCase("y")==0?true:false;
+					ppt = values[6].compareToIgnoreCase("y")==0?true:false;
+					pclass = values[7].compareToIgnoreCase("y")==0?true:false;
+					temp = values[8].compareToIgnoreCase("y")==0?true:false;
+					grpBmass = values[9].compareToIgnoreCase("y")==0?true:false;
+					grpPR = values[10].compareToIgnoreCase("y")==0?true:false;
+					grpSize = values[11].compareToIgnoreCase("y")==0?true:false;
+					sppBmass = values[12].compareToIgnoreCase("y")==0?true:false;
+					indivs = values[13].compareToIgnoreCase("y")==0?true:false;
 					break;
 				default:
 					f.LogError(LogFileIn.LogMode.ERROR, "BmassFlags.in read : Unkown Line.");
@@ -207,10 +207,12 @@ public class BmassFlags extends Input {
 		List<String> lines = new ArrayList<String>();
 		lines.add(Comments[0]);
 		lines.add("# Sumry Yearly Header Sep YrNum Disturb PPT PClass Temp GrpBmass GrpPR GrpSize SppBmass Indivs");
-		lines.add((sumry?"y":"n")+"\t"+(yearly?"y":"n")+"\t"+(header?"y":"n")+"\t"+sep+"\t"+(yrnum?"y":"n")+"\t"+(disturb?"y":"n")+"\t"+(ppt?"y":"n")+"\t"
-				+(pclass?"y":"n")+"\t"+(temp?"y":"n")+"\t"+(grpBmass?"y":"n")+"\t"+(grpPR?"y":"n")+"\t"+(grpSize?"y":"n")+"\t"+(sppBmass?"y":"n")+"\t"+(indivs?"y":"n"));
+		lines.add("  "+ds(sumry?"y":"n",5)+ds(yearly?"y":"n",6)+ds(header?"y":"n",6)+ds(sep,3)+ds(yrnum?"y":"n",5)+ds(disturb?"y":"n",7)+ds(ppt?"y":"n",3)
+				+ds(pclass?"y":"n",6)+ds(temp?"y":"n",4)+ds(grpBmass?"y":"n",8)+ds(grpPR?"y":"n",5)+ds(grpSize?"y":"n",7)+ds(sppBmass?"y":"n",8)+ds(indivs?"y":"n",6));
 		lines.add(Comments[1]);
 		java.nio.file.Files.write(SpeciesInPath, lines, StandardCharsets.UTF_8);
 	}
-	
+	private String ds(String t, int width) {
+		return String.format("%-"+String.valueOf(width)+"s", t)+" ";
+	}
 }

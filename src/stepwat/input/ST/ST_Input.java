@@ -1,5 +1,6 @@
 package stepwat.input.ST;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -103,8 +104,89 @@ public class ST_Input {
 		}
 	}
 	
+	/**
+	 * This function will only create the Folder Str
+	 * within the prj folder.
+	 * @throws Exception 
+	 */
+	public void createPrjFolders() throws Exception {
+		LogFileIn f = LogFileIn.getInstance();
+		if(Files.notExists(Paths.get(this.prjDir))) {
+			try {
+				Files.createDirectories(Paths.get(this.prjDir));
+			} catch (IOException e) {
+				f.LogError(LogFileIn.LogMode.ERROR, this.prjDir + " : Directory does not exist and can not be created."+e.getMessage());
+			}
+		}
+		if(Files.notExists(Paths.get(this.prjDir,this.filesInName))) {
+			try {
+				Files.createDirectories(Paths.get(this.prjDir,this.filesInName).getParent());
+				Files.createFile(Paths.get(this.prjDir,this.filesInName));
+			} catch (IOException e) {
+				f.LogError(LogFileIn.LogMode.ERROR, this.filesInName + " : Directory does not exist and can not be created."+e.getMessage());
+			}
+		}
+		if(Files.notExists(Paths.get(this.prjDir,this.files.model))) {
+			try {
+				Files.createDirectories(Paths.get(this.prjDir,this.files.model).getParent());
+				Files.createFile(Paths.get(this.prjDir,this.files.model));
+			} catch (IOException e) {
+				f.LogError(LogFileIn.LogMode.ERROR, this.files.model + " : Directory does not exist and can not be created."+e.getMessage());
+			}
+		}
+		if(Files.notExists(Paths.get(this.prjDir,this.files.env))) {
+			try {
+				Files.createDirectories(Paths.get(this.prjDir,this.files.env).getParent());
+				Files.createFile(Paths.get(this.prjDir,this.files.env));
+			} catch (IOException e) {
+				f.LogError(LogFileIn.LogMode.ERROR, this.files.env + " : Directory does not exist and can not be created."+e.getMessage());
+			}
+		}
+		if(Files.notExists(Paths.get(this.prjDir,this.files.plot))) {
+			try {
+				Files.createDirectories(Paths.get(this.prjDir,this.files.plot).getParent());
+				Files.createFile(Paths.get(this.prjDir,this.files.plot));
+			} catch (IOException e) {
+				f.LogError(LogFileIn.LogMode.ERROR, this.files.plot + " : Directory does not exist and can not be created."+e.getMessage());
+			}
+		}
+		if(Files.notExists(Paths.get(this.prjDir,this.files.bmassflags))) {
+			try {
+				Files.createDirectories(Paths.get(this.prjDir,this.files.bmassflags).getParent());
+				Files.createFile(Paths.get(this.prjDir,this.files.bmassflags));
+			} catch (IOException e) {
+				f.LogError(LogFileIn.LogMode.ERROR, this.files.bmassflags + " : Directory does not exist and can not be created."+e.getMessage());
+			}
+		}
+		if(Files.notExists(Paths.get(this.prjDir,this.files.mortflags))) {
+			try {
+				Files.createDirectories(Paths.get(this.prjDir,this.files.mortflags).getParent());
+				Files.createFile(Paths.get(this.prjDir,this.files.mortflags));
+			} catch (IOException e) {
+				f.LogError(LogFileIn.LogMode.ERROR, this.files.mortflags + " : Directory does not exist and can not be created."+e.getMessage());
+			}
+		}
+		if(Files.notExists(Paths.get(this.prjDir,this.files.rgroup))) {
+			try {
+				Files.createDirectories(Paths.get(this.prjDir,this.files.rgroup).getParent());
+				Files.createFile(Paths.get(this.prjDir,this.files.rgroup));
+			} catch (IOException e) {
+				f.LogError(LogFileIn.LogMode.ERROR, this.files.rgroup + " : Directory does not exist and can not be created."+e.getMessage());
+			}
+		}
+		if(Files.notExists(Paths.get(this.prjDir,this.files.species))) {
+			try {
+				Files.createDirectories(Paths.get(this.prjDir,this.files.species).getParent());
+				Files.createFile(Paths.get(this.prjDir,this.files.species));
+			} catch (IOException e) {
+				f.LogError(LogFileIn.LogMode.ERROR, this.files.species + " : Directory does not exist and can not be created."+e.getMessage());
+			}
+		}
+	}
+	
 	public void writeInputData() throws Exception {
 		LogFileIn f = stepwat.LogFileIn.getInstance();
+		createPrjFolders();
 		if(files.data())
 			files.write(Paths.get(prjDir, filesInName));
 		else
