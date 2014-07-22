@@ -30,14 +30,14 @@ public class Globals {
 	public static final int Intcpt=0;
 	public static final int Slope=1;
 	public static final int P0=0;
-	public static final int P1=0;
-	public static final int P2=0;
-	public static final int P3=0;
-	public static final int P4=0;
+	public static final int P1=1;
+	public static final int P2=2;
+	public static final int P3=3;
+	public static final int P4=4;
 	
 	public static final int NoSeason=-1;
 	public static final int CoolSeason=0;
-	public static final int WarmSeason=0;
+	public static final int WarmSeason=1;
 	
 	public class PPT {
 		protected float avg, std;
@@ -109,7 +109,11 @@ public class Globals {
 	public AntMounds mound = new AntMounds();
 	public Burrows burrow = new Burrows();
 	public OutFiles bmass = new OutFiles(), mort = new OutFiles();
-
+	
+	/**
+	 * Use SoilWat
+	 */
+	protected boolean UseSoilwat;
 	/**
 	 * Use Grid option
 	 */
@@ -191,7 +195,8 @@ public class Globals {
 		this.files[F_MortAvg] = files.mortavg;
 		this.files[F_SXW] = files.sxw;
 		//Set Model Inputs
-		this.setMax_Age(this.setRunModelYears(model.nYears));
+		this.setRunModelYears(model.nYears);
+		this.setMax_Age(model.nYears);
 		this.setRunModelIterations(model.nIterations);
 		this.bmass.suffixwidth = this.mort.suffixwidth = String.valueOf(model.nIterations).length();
 		this.setRandseed(model.seed==0?0:-Math.abs(model.seed));
@@ -257,9 +262,8 @@ public class Globals {
 		return runModelYears;
 	}
 
-	public int setRunModelYears(int runModelYears) {
+	public void setRunModelYears(int runModelYears) {
 		this.runModelYears = runModelYears;
-		return runModelYears;
 	}
 
 	public int getMax_Age() {

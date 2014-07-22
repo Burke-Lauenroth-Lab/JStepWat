@@ -336,16 +336,16 @@ public class Control {
 		        parm_Initialize(iter);
 
 		      Plot_Initialize();
-		     /* Globals.currIter = iter;
+		      Globals.setCurrIter(iter);
 
 		      // ------  Begin running the model ------ 
-		      for( year=1; year <= Globals.runModelYears; year++) {
+		      for( year=1; year <= Globals.getRunModelYears(); year++) {
 
 		    	  // printf("Iter=%d, Year=%d\n", iter, year);  
-		          Globals.currYear = year;
+		          Globals.setCurrYear(year);
 
-		          rgroup_Establish();  // excludes annuals 
-		          Env_Generate();
+		          ResourceGroup.establish(Plot, Globals, RGroup);  // excludes annuals 
+		          Env.generate(RGroup);
 		          rgroup_PartResources();
 		          rgroup_Grow();
 

@@ -256,6 +256,27 @@ public class Species {
 	}
 	
 	/**
+	 * relsize * mature_biomass
+	 * @return
+	 */
+	public float getBiomass() {
+		return this.relsize * this.mature_biomass;
+	}
+	
+	public void addIndiv(int new_indivs) throws Exception {
+		if(0 == new_indivs) return;
+		
+		float newsize = 0;
+		for(int i=1; i<=new_indivs; i++) {
+			new Indiv(this);
+			newsize += relseedlingsize;
+		}
+		
+		res_grp.addSpecies(this);
+		update_Newsize(newsize);
+	}
+	
+	/**
 	 * This is the point at which any changes in the individuals,<br>
 	 * whether by growth or mortality, is reflected in the overall<br>
 	 * relative size at the Species and RGroup levels.
@@ -285,7 +306,7 @@ public class Species {
 		}
 		
 		this.relsize += newsize;
-		this.res_grp.RGroup_Update_Newsize();
+		this.res_grp.update_Newsize();
 		
 		//if(max_age != 1) {
 			//if(Indvs.size() < 0) est_count = 0;
@@ -306,7 +327,7 @@ public class Species {
 				ind.next().indiv_Kill_Complete();
 			}
 		}
-		res_grp.rgroup_DropSpecies(this);
+		res_grp.dropSpecies(this);
 	}
 	
 	/**
@@ -324,6 +345,16 @@ public class Species {
 			kills[age]++;
 			res_grp.kills[age]++;
 		}
+	}
+	
+	/**
+	 * accumulate number of indivs established by species
+	 * for fecundity rates.
+	 * @param num
+	 */
+	public void updateEstabs(int num) {
+		estabs += num;
+		res_grp.estabs += num;
 	}
 	
 	public int getEst_count() {

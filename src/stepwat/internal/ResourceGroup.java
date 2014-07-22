@@ -6,7 +6,10 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
+import stepwat.LogFileIn;
+import stepwat.LogFileIn.LogMode;
 import stepwat.input.ST.Rgroup;
+import stepwat.internal.Environs.PPTClass;
 
 public class ResourceGroup {
 
@@ -20,6 +23,8 @@ public class ResourceGroup {
 	}
 	
 	public Globals globals;
+	public Plot plot;
+	public Environs Env;
 	
 	/* Quantities that can change during model runs */
 	/**
@@ -64,6 +69,7 @@ public class ResourceGroup {
 	protected float relsize;
 	/**
 	 * number of species actually established in group
+	 * @deprecated
 	 */
 	protected int est_count;
 	/**
@@ -78,10 +84,6 @@ public class ResourceGroup {
 	 * annuals: comb. of startyr, etc means we can regen this year
 	 */
 	protected boolean regen_ok;
-	
-	public boolean isExtirpated() {
-		return extirpated;
-	}
 
 	/* Quantities that DO NOT change during model runs */
 	
@@ -181,7 +183,13 @@ public class ResourceGroup {
 	 * Group name
 	 */
 	private String name;
-	
+	/**
+	 * Takes input object and copies values to proper internal structure
+	 * 
+	 * @param group
+	 * @param rpram
+	 * @param succulent
+	 */
 	public void setInput(Rgroup.GroupType group, Rgroup.ResourceParameters rpram, boolean succulent) {
 		this.setGrp_num(group.id);
 		this.name = new String(name);
@@ -217,6 +225,7 @@ public class ResourceGroup {
 			this.setSucculent(true);
 		}
 	}
+	
 	/**
 	 * put all the individuals of the group into a list
 	 * and optionally sort the list. If sort==true then
@@ -226,7 +235,7 @@ public class ResourceGroup {
 	 * @param asc
 	 * @return
 	 */
-	public LinkedList<Indiv> RGroup_GetIndivs(boolean sort, boolean asc) {
+	public LinkedList<Indiv> getIndivs(boolean sort, boolean asc) {
 		int i=0;
 		LinkedList<Indiv> nlist = new LinkedList<Indiv>();
 		
@@ -249,7 +258,7 @@ public class ResourceGroup {
 	 * Relative size for a group is 1.0 if all the group's
 	 * species are established and size 1.0;
 	 */
-	public void RGroup_Update_Newsize() {
+	public void update_Newsize() {
 		float sumsize = 0;
 		
 		/*
@@ -264,7 +273,7 @@ public class ResourceGroup {
 		
 		if(this.max_age != 1) {
 			//compute the contribution of each indiv to the group's size
-			LinkedList<Indiv> indivs = RGroup_GetIndivs(false,false);
+			LinkedList<Indiv> indivs = getIndivs(false,false);
 			Iterator<Indiv> itr = indivs.iterator();
 			while(itr.hasNext()) {
 				Indiv ind = itr.next();
@@ -281,11 +290,242 @@ public class ResourceGroup {
 	 * out, it is dropped from the group so it will not be
 	 * processed unnecessarily.
 	 */
-	protected void rgroup_DropSpecies(Species s) {
+	protected void dropSpecies(Species s) {
 		if(est_spp.contains(s)) {
 			est_spp.remove(s);
 			est_count = est_spp.size();
 		}	
+	}
+	
+	/**
+	 * When a species associated with a resource group becomes
+	 * established, it is added to the list of species and
+	 * otherwise linked to the group.
+	 * @param sp
+	 */
+	public void addSpecies(Species sp) {
+		if(!est_spp.contains(sp)) {
+			est_spp.add(sp);
+		}
+	}
+	
+	/**
+	 * Main loop to grow all the plants.
+	 * @throws Exception 
+	 */
+	static public void grow(List<ResourceGroup> RGroup, Environs Env, Globals globals) throws Exception {
+		final float OPT_SLOPE = 0.5f;
+		/** growth of one individual */
+		float growth1;
+		/** sum of growth for a species' indivs */
+		float sppgrowth;
+		/** rate of growth for an individual */
+		float rate1;
+		/** growth factor modifier */
+		float tgmod=0, gmod;
+		
+		ResourceGroup g;
+		
+		for(int rg=0; rg<RGroup.size(); rg++) {
+			g = RGroup.get(rg);
+			if(g.max_age == 1) continue; //annuals already taken care of
+			if(g.est_spp.size() == 0) continue; //Nothing to grow?
+			if(g.succulent && Env.wet_dry == PPTClass.Ppt_Wet) continue; //can't grow succulents if a wet year, so skip this group
+			
+			//for each non-annual species
+			//grow individuals and increment size
+			//all groups are either all annual or all perennial
+			for (Species s : g.est_spp) {
+				sppgrowth = 0.0f;
+				if(!s.allow_growth) continue;
+				
+				//Modify growth rate by temperature
+				//calculated in Env_Generate()
+				if(s.getTempclass() != Species.TempClass.NoSeason) {
+					tgmod = Env.temp_reduction[s.getTempclass().ordinal()];
+				}
+				
+				//now grow the individual plants of current species
+				for(Indiv ndv : s.Indvs) {
+					//modify growth rate based on resource availability
+					//deleted EQN 5 because it's wrong.  gmod==.05 is too low
+					
+					gmod = 1.0f - OPT_SLOPE * Math.min(1.0f, ndv.pr);
+					if(Float.compare(ndv.pr, 1.0f) > 1)
+						gmod /= ndv.pr;
+					
+					//TODO: tgmod is not initialized in the C code.
+					gmod *= tgmod;
+					
+					if(ndv.killed && globals.random.RandUni() < ndv.prob_veggrow) {
+						//if indiv appears killed it was reduced due to low resources
+						//last year. it can veg. prop. this year but couldn't last year
+						growth1 = s.getRelseedlingsize() * globals.random.RandUniRange(1, s.getMax_vegunits());
+						rate1 = growth1 / ndv.relsize;
+						ndv.killed = false;
+					} else {
+						//normal growth: modifier times optimal growth rate (EQN 1)
+						rate1 = gmod * s.getIntrin_rate() * (1.0f - ndv.relsize);
+						growth1 = rate1 * ndv.relsize;
+					}
+					ndv.relsize += growth1;
+					ndv.growthrate = rate1;
+					sppgrowth += growth1;
+				}//end of indivs
+				s.update_Newsize(sppgrowth);
+			}//end of species
+			g.extra_growth();
+		}
+	}
+	
+	/**
+	 * When there are resources beyond the minimum necessary
+	 * for "optimal" growth, ie, use of eqn 5, the extra
+	 * resources are converted to superfluous growth that
+	 * only counts for the current year and is removed at
+	 * the beginning of the next year.
+	 * @throws Exception 
+	 */
+	private void extra_growth() throws Exception {
+		float extra, indivpergram;
+		
+		if(max_age == 1) return;
+		if(Float.compare(xgrow, 0) == 0) return;
+		if(!use_extra_res) return;
+		
+		for(Species s : est_spp) {
+			indivpergram = 1.0f/s.getMature_biomass();
+			for(Indiv ndv : s.Indvs) {
+				extra = ndv.res_extra * min_res_req * Env.ppt * xgrow;
+				s.extragrowth += extra * indivpergram;
+			}
+			s.update_Newsize(s.extragrowth);
+		}
+	}
+	
+	/**
+	 * Determines which and how many species can establish
+	 * in a given year.
+	 * <br>
+	 * For each species in each group, check that a uniform
+	 * random number between 0 and 1 is less than the species'
+	 * establishment probability.<br>
+	 * a) If so, return a random number of individuals,
+	 * up to the maximum allowed to establish for the
+	 * species.  This is the number of individuals in
+	 * this species that will establish this year.
+	 * b) If not, continue with the next species.
+	 * @throws Exception 
+	 */
+	public static void establish(Plot plot, Globals globals, List<ResourceGroup> RGroup) throws Exception {
+		int num_est=0;
+		//Cannot establish if plot is still in disturbed state
+		if(plot.disturbed > 0) {
+			for(ResourceGroup g : RGroup)
+				g.regen_ok = false;
+			return;
+		}
+		
+		for(ResourceGroup g : RGroup) {
+			if(!g.use_me) continue;
+			
+			g.regen_ok = true;
+			if(globals.currYear < g.startyr) {
+				g.regen_ok = false;
+			} else if(g.max_age == 1) {
+				//see similar logic in mort_EndOfYear() for perennials
+				if(Float.compare(g.killyr, 0.0f) > 0) {//GT
+					if(Float.compare(g.killyr, 1.0f) < 0) {//LT
+						if(globals.random.RandUni() <= g.killfreq)
+							g.regen_ok = false;
+					} else if((globals.currYear - g.startyr) % g.killfreq == 0) {
+						g.regen_ok = false;
+					}
+				}
+			} else {
+				for (Species species : g.species) {
+					if(!species.isUse_me())
+						continue;
+					if(!species.allow_growth)
+						continue;
+					
+					num_est = species.numEstablish();
+					if(num_est != 0) {
+						species.addIndiv(num_est);
+						species.updateEstabs(num_est);
+					}
+				}
+			}
+		}
+	}
+	
+	/**
+	 * Increment ages of individuals in a resource group.
+	 * @return
+	 * @throws Exception 
+	 */
+	public void incrAges(List<ResourceGroup> RGroup, Globals globals) throws Exception {
+		LogFileIn f = stepwat.LogFileIn.getInstance();
+		
+		for(ResourceGroup g : RGroup) {
+			if(g.max_age == 1)
+				continue;
+			for(Species s : g.est_spp) {
+				for(Indiv ndv : s.Indvs) {
+					ndv.age++;
+					if(ndv.age > s.getMax_age()) {
+						f.LogError(
+								LogMode.WARN,
+								s.getName() + "grown older than max_age ("
+										+ String.valueOf(ndv.age) + " > "
+										+ String.valueOf(s.getMax_age())
+										+ " Iter="
+										+ String.valueOf(globals.currIter)
+										+ ", Year="
+										+ String.valueOf(globals.currYear));
+					}
+				}
+			}
+		}
+	}
+	
+	/**
+	 * Convert relative size to biomass for a resource group.
+	 * @return
+	 */
+	public float getBiomass() {
+		float biomass = 0.0f;
+		if(est_spp.size() == 0) return 0.0f;
+		for(Species s : est_spp) {
+			biomass += s.relsize * s.getMature_biomass();
+		}
+		return biomass;
+	}
+	
+	/**
+	 * Kill a group catastrophically, meaning, kill all
+	 * individuals, remove their biomass (relsize), and
+	 * don't let them regenerate ever again.
+	 * @return
+	 * @throws Exception 
+	 */
+	public void extirpate() throws Exception {
+		for(Species s : species) {
+			s.kill();
+			s.setSeedling_estab_prob(0.0f);
+		}
+		this.extirpated = true;
+	}
+	
+	/**
+	 * Kill all individuals of all species in the group, but allow them to regenerate.
+	 * @return
+	 * @throws Exception 
+	 */
+	public void kill() throws Exception {
+		for(Species s : est_spp) {
+			s.kill();
+		}
 	}
 	
 	public int getYrs_neg_pr() {
@@ -303,6 +543,11 @@ public class ResourceGroup {
 	public void setExtirpated(boolean extirpated) {
 		this.extirpated = extirpated;
 	}
+	
+	public boolean isExtirpated() {
+		return extirpated;
+	}
+	
 	public int[] getKills() {
 		return kills;
 	}
@@ -491,3 +736,86 @@ public class ResourceGroup {
 		this.depth = depth;
 	}
 }
+
+/* COMMENT 1 - Algorithm for rgroup_PartResources() */
+/*
+ * Assign minimum resources to each group based on relative
+ * size (which can be greater than 1.0).  Resource is computed
+ * by scaling the PPT according to the slope and intercept
+ * parameters in the groups input file.  Average PPT should
+ * yield a resource value of 1.0.  Any resource above 1.0 is
+ * committed to extra resource and is allocated in
+ * _PartResExtra().
+ *
+ * Resource required is equal to the relative size of the group;
+ * resource available is equivalent to the relative size truncated
+ * at 1.0, ie, this is how a group becomes resource limited.
+ * For example, a group of 1 three-quarter-sized individual
+ * requires min_res_req times .75 times the resource (scaled PPT);
+ * for an average PPT year this produces a resource availability
+ * of  0.75.  The minimum availability needed for maintenance is
+ * equivalent to the relative size <= 1.0.  If the size is < 1,
+ * the plant is too small to use all of the potentially available
+ * resource, so the difference is added to the pool of extra
+ * resource.  If the size is > 1.0, then the plant is too large
+ * to use the minimum available. On the other hand, if this is a
+ * below average PPT year and the size is 1.0 (or more) the group
+ * only gets min_res_req times resource < 1.0 , so groups with
+ * size > space * resource will have stretched resources.
+ *
+ * However if this is an above average PPT year, the groups start
+ * out with no more than min_res_req amount of the resource even
+ * if the requirements (and size) are higher.  In any case,
+ * _PartResExtra() will determine if there is enough extra
+ * from other smaller groups and or above average PPT to make up
+ * the difference.
+ */
+
+
+
+/*  COMMENT 3 - Algorithm for rgroup_ResPartIndiv()
+ *  2-Mar-03
+ *
+ Originally (before 2-Mar-03), the premise for the entire scheme
+ of growth modification dependent upon the ratio of required to
+ available resources was probably faulty in that availability was
+ limited by the size of the indiv (or group).  In retrospect,
+ this doesn't make sense.  Rather the availability is defined by
+ the amount of resource, irrespective of whether plants are
+ available to use it, ie, min(resource, 1.0). Generally this can
+ be interpreted as "free range" and any able-bodied plant is
+ welcome to take what it can.  For individuals within a group
+ though, it's necessary to define availability as the total
+ available resource assigned to indivs based on their
+ proportional size.  All the available resource is "credited" to
+ the individuals based on their size (a competitive feature).
+
+ Whereas in the past, size-limited available resource was partitioned
+ according to a "cup"-based method (meaning each individual was
+ like a cup of relsize filled in decreasing order until resource
+ was depleted), now that isn't necessary because, and this is
+ very important, small groups (< resource) have ample resource
+ to meet each indiv's minimum need so all indivs get enough.
+
+ However, for large (>= resource) groups, indivs still get available
+ resource by the cup method.  For example, if this is a dry year
+ with full requirements, the larger indivs get as much as they
+ need (relsize amt) until the resource runs out, after which the
+ smallest indivs are considered to be in severe resource deprivation
+ for that year.
+
+ For groups that are allowed to use extra resource, the pooled
+ extra resource is allocated proportionally.  If a plant is
+ allowed to exhibit extra (superfluous yearly) growth, the amount
+ assigned is directly related to the size of the plant, ie,
+ smaller plants get more of the extra resource applied to
+ persistent growth (relsize) whereas larger plants get more applied
+ to extra (leafy) growth.
+
+ This general approach should work equally well whether the resource
+ comes from SOILWAT or the MAP equation because it's based on the
+ group PR value which is determined before this routine.  Note,
+ though, that the implication is that both methods of resource
+ creation imply that availability is not tied to relsize.
+
+ */

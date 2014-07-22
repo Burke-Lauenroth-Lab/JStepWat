@@ -158,7 +158,7 @@ public class Indiv {
 		myspecies.Indvs.remove(this);
 		int count = myspecies.Indvs.size();
 		if ((--count) == 0) {
-			myspecies.getRes_grp().rgroup_DropSpecies(myspecies);
+			myspecies.getRes_grp().dropSpecies(myspecies);
 		}
 	}
 	//Custom sort methods for indv
