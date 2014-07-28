@@ -77,9 +77,10 @@ public class Indiv {
 	 * @param species
 	 * @throws Exception
 	 */
-	public Indiv(Species species) throws Exception {
+	public Indiv(Globals g, Species species) throws Exception {
 		LogFileIn f = stepwat.LogFileIn.getInstance();
 		
+		this.globals = g;
 		if(species.Indvs.size() == MAX_INDIVS_PER_SPP) {
 			f.LogError(LogMode.WARN,
 					"Limit reached: " + species.getName() + " is about to get "
@@ -134,7 +135,7 @@ public class Indiv {
 	 * @param ndv
 	 * @throws Exception
 	 */
-	public void indiv_Kill_Complete() throws Exception {
+	public void kill_Complete() throws Exception {
 		LogFileIn f = stepwat.LogFileIn.getInstance();
 
 		if (age > myspecies.getMax_age()) {
@@ -146,14 +147,14 @@ public class Indiv {
 		}
 		myspecies.update_Kills(age);
 		myspecies.update_Newsize(-relsize);
-		_delete();
+		delete();
 	}
 	
 	/**
 	 * Local routine to remove the data object of an individual.
 	 * Called from indiv_Kill_Complete()
 	 */
-	private void _delete() {
+	private void delete() {
 
 		myspecies.Indvs.remove(this);
 		int count = myspecies.Indvs.size();

@@ -9,7 +9,7 @@ import stepwat.input.ST.Plot;
 import stepwat.input.ST.Rgroup;
 
 public class Globals {
-	public static final int NFILES=13;
+	public static final int NFILES=14;
 	
 	public static final int F_First=0;
 	public static final int F_Log=1;
@@ -102,7 +102,7 @@ public class Globals {
 		}
 	}
 
-	public Rand random;
+	public Rand random = new Rand();
 	public PPT ppt = new PPT();
 	public Temperature temp = new Temperature();
 	public Fecalpats pat = new Fecalpats();
@@ -121,7 +121,15 @@ public class Globals {
 	/**
 	 * Use Seed Dispersal
 	 */
-	protected boolean UseSeedDispersal;
+	public boolean UseSeedDispersal;
+	/**
+	 * Use Progress Bar
+	 */
+	public boolean UseProgressBar;
+	/**
+	 * The directory to project folder
+	 */
+	public String prjDir;
 	/**
 	 * Where all the files.in paths are found.
 	 * Access with static final ints with name of
@@ -178,7 +186,7 @@ public class Globals {
 		tempparm = new float[2][3];
 	}
 	
-	public void setInput(String filesIn, Files files, Model model, Environment envir, Plot plot, Rgroup rGroup) {
+	public void setInput(String prjDir, String filesIn, Files files, Model model, Environment envir, Plot plot, Rgroup rGroup) {
 		//Files Inputs
 		this.files[F_First] = filesIn;
 		this.files[F_Log] = files.logfile;
@@ -240,6 +248,14 @@ public class Globals {
 		this.setPlotsize(plot.plotsize);
 		//rGroup
 		this.setGrpMaxEstab(rGroup.nGrpEstab);
+	}
+
+	public String[] getFiles() {
+		return files;
+	}
+
+	public void setFiles(String[] files) {
+		this.files = files;
 	}
 
 	public float getPlotsize() {

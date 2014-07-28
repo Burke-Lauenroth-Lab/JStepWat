@@ -106,12 +106,12 @@ public class MortFlags extends Input {
 				case 0:
 					if(values.length != 6)
 						f.LogError(LogFileIn.LogMode.ERROR, "MortFlags.in read : Expected 6 value.");
-					sumry = values[0]=="y"?true:false;
-					yearly = values[1]=="y"?true:false;
-					header = values[2]=="y"?true:false;
+					sumry = values[0].compareToIgnoreCase("y")==0?true:false;
+					yearly = values[1].compareToIgnoreCase("y")==0?true:false;
+					header = values[2].compareToIgnoreCase("y")==0?true:false;
 					sep = values[3];
-					group = values[4]=="y"?true:false;
-					species = values[5]=="y"?true:false;
+					group = values[4].compareToIgnoreCase("y")==0?true:false;
+					species = values[5].compareToIgnoreCase("y")==0?true:false;
 					break;
 				default:
 					f.LogError(LogFileIn.LogMode.ERROR, "MortFlags.in read : Unkown Line.");

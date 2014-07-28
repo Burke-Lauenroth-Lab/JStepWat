@@ -1,6 +1,5 @@
 package stepwat.internal;
 
-import java.util.Iterator;
 import java.util.LinkedList;
 
 import stepwat.LogFileIn;
@@ -57,7 +56,7 @@ public class Species {
 	/**
 	 * facility for linked list for indvs
 	 */
-	protected LinkedList<Indiv> Indvs;
+	protected LinkedList<Indiv> Indvs = new LinkedList<Indiv>();
 	/**
 	 * whether to allow growth this year... only applicable if using seed dispersal and gridded option
 	 */
@@ -167,6 +166,10 @@ public class Species {
 	 */
 	private boolean use_dispersal;
 	
+	public Species(Globals g) {
+		this.globals = g;
+	}
+	
 	public void setInput(stepwat.input.ST.Species.SpeciesParams species, ResourceGroup group,
 			stepwat.input.ST.Species.AnnualsParams aparams, stepwat.input.ST.Species.SpeciesProbParam sprobparam,
 			stepwat.input.ST.Species.SeedDispersalParam seedparam, int index) {
@@ -268,7 +271,7 @@ public class Species {
 		
 		float newsize = 0;
 		for(int i=1; i<=new_indivs; i++) {
-			new Indiv(this);
+			new Indiv(globals, this);
 			newsize += relseedlingsize;
 		}
 		
@@ -322,9 +325,8 @@ public class Species {
 		if(this.max_age ==1) {
 			update_Newsize(-relsize);
 		} else {
-			Iterator<Indiv> ind = Indvs.iterator();
-			while(ind.hasNext()) {
-				ind.next().indiv_Kill_Complete();
+			for(int i=Indvs.size()-1; i>=0 ; i--) {
+				Indvs.get(i).kill_Complete();
 			}
 		}
 		res_grp.dropSpecies(this);
@@ -361,9 +363,9 @@ public class Species {
 		return this.Indvs.size();
 	}
 
-	//public void setEst_count(int est_count) {
-	//	this.est_count = est_count;
-	//}
+	public void clearEstIndv() {
+		this.Indvs.clear();
+	}
 
 	public float getRelsize() {
 		return relsize;

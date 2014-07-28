@@ -1,7 +1,5 @@
 package stepwat.internal;
 
-import java.util.List;
-
 import stepwat.internal.Plot.DisturbEvent;
 
 public class Environs {
@@ -34,19 +32,24 @@ public class Environs {
 	/**
 	 * amt to reduce growth by temp
 	 */
-	protected float[] temp_reduction;
+	protected float[] temp_reduction = new float[2];
 	/* (eqns 12,13), one for each tempclass */
 	
+	public Environs(Globals g, Plot p, Succulent s) {
+		this.globals = g;
+		this.succulent = s;
+		this.plot = p;
+	}
 	/**
 	 * Wrapper to generate a new set of environmental factors,
 	 * usually for the current year.  Any new environmental
 	 * generators should be called from this subroutine.
 	 */
-	public void generate(List<ResourceGroup> rgroup) {
+	public void generate(RGroups rgroups) {
 		if(globals.UseSoilwat) {
 			//SXW_Run_SOILWAT();
 		} else {
-			for(ResourceGroup g : rgroup) {
+			for(ResourceGroup g : rgroups) {
 				g.res_avail = 0.0f;
 			}
 		}
@@ -125,6 +128,16 @@ public class Environs {
 			tp[0] = temp + tp[1];
 			temp_reduction[i] = tp[2]*tp[0] + tp[3] * (tp[0]*tp[0]);
 			temp_reduction[i] = Math.max(0.0f, temp_reduction[i]);
+		}
+		
+		if(globals.UseSoilwat) {
+			if(temp < 9.5) {
+				temp_reduction[Globals.CoolSeason] = .9f;
+				temp_reduction[Globals.WarmSeason] = .6f;
+			} else {
+				temp_reduction[Globals.CoolSeason] = .6f;
+				temp_reduction[Globals.WarmSeason] = .9f;
+			}
 		}
 	}
 	

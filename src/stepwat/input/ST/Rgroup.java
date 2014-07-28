@@ -341,7 +341,7 @@ public class Rgroup extends Input {
 			}
 		}
 		this.data = true;
-		sort();
+		//sort();
 	}
 	
 	public void sort() {

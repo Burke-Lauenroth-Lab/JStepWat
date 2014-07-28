@@ -183,6 +183,13 @@ public class ResourceGroup {
 	 * Group name
 	 */
 	private String name;
+	
+	public ResourceGroup(Globals g, Plot p, Environs e) {
+		this.globals = g;
+		this.plot = p;
+		this.Env = e;
+	}
+	
 	/**
 	 * Takes input object and copies values to proper internal structure
 	 * 
@@ -192,7 +199,7 @@ public class ResourceGroup {
 	 */
 	public void setInput(Rgroup.GroupType group, Rgroup.ResourceParameters rpram, boolean succulent) {
 		this.setGrp_num(group.id);
-		this.name = new String(name);
+		this.name = new String(group.name);
 		this.setMax_stretch(group.stretch);
 		this.setMax_spp_estab(group.maxest);
 		this.setMax_density(group.density);
@@ -223,6 +230,300 @@ public class ResourceGroup {
 		//there should be only one succ param
 		if(succulent) {
 			this.setSucculent(true);
+		}
+	}
+	
+	/**
+	 * Determines which and how many species can establish
+	 * in a given year.
+	 * <br>
+	 * For each species in each group, check that a uniform
+	 * random number between 0 and 1 is less than the species'
+	 * establishment probability.<br>
+	 * a) If so, return a random number of individuals,
+	 * up to the maximum allowed to establish for the
+	 * species.  This is the number of individuals in
+	 * this species that will establish this year.
+	 * b) If not, continue with the next species.
+	 * @throws Exception 
+	 */
+	protected void establish() throws Exception {
+		int num_est = 0;
+
+		if (!use_me)
+			return;
+
+		regen_ok = true;
+		if (globals.currYear < startyr) {
+			regen_ok = false;
+		} else if (max_age == 1) {
+			// see similar logic in mort_EndOfYear() for perennials
+			if (Float.compare(killfreq, 0.0f) > 0) {// GT
+				if (Float.compare(killfreq, 1.0f) < 0) {// LT
+					if (globals.random.RandUni() <= killfreq)
+						regen_ok = false;
+				} else if ((globals.currYear - startyr) % killfreq == 0) {
+					regen_ok = false;
+				}
+			}
+		} else {
+			for (Species sp : species) {
+				if (!sp.isUse_me())
+					continue;
+				if (!sp.allow_growth)
+					continue;
+
+				num_est = sp.numEstablish();
+				if (num_est != 0) {
+					sp.addIndiv(num_est);
+					sp.updateEstabs(num_est);
+				}
+			}
+		}
+	}
+	
+	/**
+	 * Main loop to grow all the plants.
+	 * @throws Exception 
+	 */
+	public void grow() throws Exception {
+		final float OPT_SLOPE = 0.5f;
+		/** growth of one individual */
+		float growth1;
+		/** sum of growth for a species' indivs */
+		float sppgrowth;
+		/** rate of growth for an individual */
+		float rate1;
+		/** growth factor modifier */
+		float tgmod=0, gmod;
+		
+		
+		if (max_age == 1)
+			return; // annuals already taken care of
+		if (est_spp.size() == 0)
+			return; // Nothing to grow?
+		if (isSucculent() && Env.wet_dry == PPTClass.Ppt_Wet)
+			return; // can't grow succulents if a wet year, so skip this group
+
+		// for each non-annual species
+		// grow individuals and increment size
+		// all groups are either all annual or all perennial
+		for (Species s : est_spp) {
+			sppgrowth = 0.0f;
+			if (!s.allow_growth)
+				continue;
+
+			// Modify growth rate by temperature
+			// calculated in Env_Generate()
+			if (s.getTempclass() != Species.TempClass.NoSeason) {
+				tgmod = Env.temp_reduction[s.getTempclass().ordinal()-1];
+			}
+
+			// now grow the individual plants of current species
+			for (Indiv ndv : s.Indvs) {
+				// modify growth rate based on resource availability
+				// deleted EQN 5 because it's wrong. gmod==.05 is too low
+
+				gmod = 1.0f - OPT_SLOPE * Math.min(1.0f, ndv.pr);
+				if (Float.compare(ndv.pr, 1.0f) > 1)
+					gmod /= ndv.pr;
+
+				// TODO: tgmod is not initialized in the C code.
+				gmod *= tgmod;
+
+				if (ndv.killed && globals.random.RandUni() < ndv.prob_veggrow) {
+					// if indiv appears killed it was reduced due to low
+					// resources last year. it can veg. prop. this year
+					// but couldn't last year.
+					growth1 = s.getRelseedlingsize()
+							* globals.random.RandUniRange(1,
+									s.getMax_vegunits());
+					rate1 = growth1 / ndv.relsize;
+					ndv.killed = false;
+				} else {
+					// normal growth: modifier times optimal growth rate (EQN 1)
+					rate1 = gmod * s.getIntrin_rate() * (1.0f - ndv.relsize);
+					growth1 = rate1 * ndv.relsize;
+				}
+				ndv.relsize += growth1;
+				ndv.growthrate = rate1;
+				sppgrowth += growth1;
+			}// end of indivs
+			s.update_Newsize(sppgrowth);
+		}// end of species
+		extra_growth();
+	}
+	
+	/**
+	 * if add_seeds==FALSE, don't add seeds to the seedbank or
+	 * add species, but do calculations required to return a
+	 * temporary group relative size for resource allocation.
+	 * if add_seeds==TRUE, we should have done the above and now
+	 * we really want to add to the biomass and seedbank.<br>
+	 * <br>
+	 * check regen_ok flag.  if true, apply establishment and
+	 * add to seedbank.  Otherwise, add 0 to seedbank and skip
+	 * adding plants this year.  We also check probability of establishment to
+	 * account for introduction of propagules, in which case
+	 * we can't add to the seedbank twice.<br>
+	 * <br>
+	 * reset group size to account for additions, or 0 if none.
+	 * @param g_pr
+	 * @param add_seeds
+	 * @return
+	 * @throws Exception 
+	 */
+	protected float add_annuals(float g_pr, boolean add_seeds) throws Exception {
+		final float PR_0_est = 20.0f;
+		float x;
+		/* number of estabs predicted by seedbank */
+		float estabs;
+		/* inverse of PR as the limit of estabs */
+		float pr_inv;
+		float newsize;
+		float sumsize;
+		boolean forced;
+		
+		if(max_age != 1) {
+			//error?
+		}
+		
+		if(!use_me) {
+			return 0.0f;
+		}
+		
+		sumsize = 0.0f;
+		
+		for(Species s : species) {
+			newsize = 0.0f;
+			forced = false;
+			
+			if(!add_seeds && globals.random.RandUni() <= s.getSeedling_estab_prob()) {
+				add_annual_seedprod(s, regen_ok?g_pr:-1.0f);
+				forced = true;
+			}
+			
+			x = regen_ok ? get_annual_maxestab(s) : 0.0f;
+			if(Float.compare(x, 0.0f) > 0) {
+				estabs = (x - (x / PR_0_est * g_pr)) * (float)Math.exp((double)-g_pr);
+				pr_inv = 1.0f / g_pr;
+				newsize = Math.min(pr_inv, estabs);
+				if(add_seeds) {
+					addSpecies(s);
+					s.update_Newsize(newsize);
+				}
+			}
+			
+			if(add_seeds && !forced)
+				add_annual_seedprod(s, Float.compare(x, 0.0f) == 0 ? -1.0f : g_pr);
+			
+			sumsize += newsize;
+		}
+		
+		return (sumsize / (float)max_spp);
+	}
+	
+	/**
+	 * 
+	 * @return
+	 */
+	private float get_annual_maxestab(Species sp) {
+		float sum = 0;
+		
+		for(int i=1; i<=sp.getViable_yrs(); i++) {
+			sum += sp.seedprod[i-1] / Math.pow(i, sp.getExp_decay());
+		}
+		
+		return sum;
+	}
+	
+	/**
+	 * negative pr means add 0 seeds to seedbank
+	 * @param pr
+	 * @return
+	 */
+	private void add_annual_seedprod(Species sp, float pr) {
+		int i=0;
+		for(i=sp.getViable_yrs() - 1; i>0; i--) {
+			sp.seedprod[i] = sp.seedprod[i-1];
+		}
+		
+		sp.seedprod[i] = Float.compare(pr, 0.0f) < 0 ? 0.0f : sp.getMax_seed_estab() * (float)Math.exp((double)-pr);
+	}
+	
+	/**
+	 * Converts ppt in mm to a resource index for a group
+	 * pointed to by g. Represents EQNs 2,3,4
+	 * @return
+	 */
+	protected float ppt2resource(float ppt) {
+		return (ppt * ppt_slope[Env.wet_dry.ordinal()] + ppt_intcpt[Env.wet_dry.ordinal()]);
+	}
+	
+	/**
+	 * The PR value used in the growth loop is now at the
+	 * individual level rather than the group level, so the
+	 * resource availability for the group is divided between
+	 * individuals of the group, largest to smallest.  Species
+	 * distinctions within the group are ignored.
+	 * 
+	 * The partitioning of resources to individuals is done
+	 * proportionally based on size so that individuals can
+	 * have their own PR value.  The reasoning is that larger
+	 * individuals should get more resources than their
+	 * less-developed competitors.
+	 */
+	public void resPartIndiv() {
+		Indiv ndv;
+		//temporary multiplier
+		float x;
+		//remainder of resource after allocating to an indiv
+		float base_rem;
+		
+		//annuals don't have indivs
+		if(max_age == 1)
+			return;
+		if(est_spp.size() == 0)
+			return;
+		
+		//allocate the temporary group-oriented arrays
+		List<Indiv> indivs = getIndivs(true, false);
+		
+		//assign indivs' availability, not including extra
+		//resource <= 1.0 is for basic growth, >= extra
+		//amount of extra, if any, is kept in g->res_extra
+		//base_rem = fmin(1, g->res_avail);
+		base_rem = res_avail;
+		for(int n=0; n<indivs.size(); n++) {
+			ndv = indivs.get(n);
+			
+			ndv.res_required = (ndv.relsize / max_spp) / max_density;
+			if(Float.compare(pr, 1.0f) > 0) {
+				ndv.res_avail = Math.min(ndv.res_required, base_rem);
+				base_rem = Math.max(base_rem - ndv.res_avail, 0.0f);
+			} else {
+				ndv.res_avail = ndv.grp_res_prop * ndv.res_avail;
+			}
+		}
+		
+		base_rem += Math.min(0.0f, res_avail - 1.0f);
+		
+		//compute PR, but on the way, assign extra resource
+		for(int n=0; n<indivs.size(); n++) {
+			ndv = indivs.get(n);
+			if(use_extra_res) {
+				//polish off any remaining resource not allocated to extra
+				ndv.res_avail += Float.compare(base_rem, 0.0f) == 0 ? 0.0f : ndv.grp_res_prop * base_rem;
+				//extra resource gets assigned here if applicable
+				if(Float.compare(res_extra, 0.0f) > 0) {
+					x = 1.0f - ndv.relsize;
+					ndv.res_extra = (1.0f - x) * ndv.grp_res_prop * res_extra;
+					ndv.res_avail += x * ndv.grp_res_prop * res_extra;
+				}
+			}
+			
+			//at last!  compute the PR value, or dflt to 100
+			ndv.pr = Float.compare(ndv.res_avail, 0.0f) > 0 ? ndv.res_required / ndv.res_avail : 100.0f;
 		}
 	}
 	
@@ -309,74 +610,7 @@ public class ResourceGroup {
 		}
 	}
 	
-	/**
-	 * Main loop to grow all the plants.
-	 * @throws Exception 
-	 */
-	static public void grow(List<ResourceGroup> RGroup, Environs Env, Globals globals) throws Exception {
-		final float OPT_SLOPE = 0.5f;
-		/** growth of one individual */
-		float growth1;
-		/** sum of growth for a species' indivs */
-		float sppgrowth;
-		/** rate of growth for an individual */
-		float rate1;
-		/** growth factor modifier */
-		float tgmod=0, gmod;
-		
-		ResourceGroup g;
-		
-		for(int rg=0; rg<RGroup.size(); rg++) {
-			g = RGroup.get(rg);
-			if(g.max_age == 1) continue; //annuals already taken care of
-			if(g.est_spp.size() == 0) continue; //Nothing to grow?
-			if(g.succulent && Env.wet_dry == PPTClass.Ppt_Wet) continue; //can't grow succulents if a wet year, so skip this group
-			
-			//for each non-annual species
-			//grow individuals and increment size
-			//all groups are either all annual or all perennial
-			for (Species s : g.est_spp) {
-				sppgrowth = 0.0f;
-				if(!s.allow_growth) continue;
-				
-				//Modify growth rate by temperature
-				//calculated in Env_Generate()
-				if(s.getTempclass() != Species.TempClass.NoSeason) {
-					tgmod = Env.temp_reduction[s.getTempclass().ordinal()];
-				}
-				
-				//now grow the individual plants of current species
-				for(Indiv ndv : s.Indvs) {
-					//modify growth rate based on resource availability
-					//deleted EQN 5 because it's wrong.  gmod==.05 is too low
-					
-					gmod = 1.0f - OPT_SLOPE * Math.min(1.0f, ndv.pr);
-					if(Float.compare(ndv.pr, 1.0f) > 1)
-						gmod /= ndv.pr;
-					
-					//TODO: tgmod is not initialized in the C code.
-					gmod *= tgmod;
-					
-					if(ndv.killed && globals.random.RandUni() < ndv.prob_veggrow) {
-						//if indiv appears killed it was reduced due to low resources
-						//last year. it can veg. prop. this year but couldn't last year
-						growth1 = s.getRelseedlingsize() * globals.random.RandUniRange(1, s.getMax_vegunits());
-						rate1 = growth1 / ndv.relsize;
-						ndv.killed = false;
-					} else {
-						//normal growth: modifier times optimal growth rate (EQN 1)
-						rate1 = gmod * s.getIntrin_rate() * (1.0f - ndv.relsize);
-						growth1 = rate1 * ndv.relsize;
-					}
-					ndv.relsize += growth1;
-					ndv.growthrate = rate1;
-					sppgrowth += growth1;
-				}//end of indivs
-				s.update_Newsize(sppgrowth);
-			}//end of species
-			g.extra_growth();
-		}
-	}
+	
 	
 	/**
 	 * When there are resources beyond the minimum necessary
@@ -386,7 +620,7 @@ public class ResourceGroup {
 	 * the beginning of the next year.
 	 * @throws Exception 
 	 */
-	private void extra_growth() throws Exception {
+	protected void extra_growth() throws Exception {
 		float extra, indivpergram;
 		
 		if(max_age == 1) return;
@@ -404,86 +638,27 @@ public class ResourceGroup {
 	}
 	
 	/**
-	 * Determines which and how many species can establish
-	 * in a given year.
-	 * <br>
-	 * For each species in each group, check that a uniform
-	 * random number between 0 and 1 is less than the species'
-	 * establishment probability.<br>
-	 * a) If so, return a random number of individuals,
-	 * up to the maximum allowed to establish for the
-	 * species.  This is the number of individuals in
-	 * this species that will establish this year.
-	 * b) If not, continue with the next species.
-	 * @throws Exception 
-	 */
-	public static void establish(Plot plot, Globals globals, List<ResourceGroup> RGroup) throws Exception {
-		int num_est=0;
-		//Cannot establish if plot is still in disturbed state
-		if(plot.disturbed > 0) {
-			for(ResourceGroup g : RGroup)
-				g.regen_ok = false;
-			return;
-		}
-		
-		for(ResourceGroup g : RGroup) {
-			if(!g.use_me) continue;
-			
-			g.regen_ok = true;
-			if(globals.currYear < g.startyr) {
-				g.regen_ok = false;
-			} else if(g.max_age == 1) {
-				//see similar logic in mort_EndOfYear() for perennials
-				if(Float.compare(g.killyr, 0.0f) > 0) {//GT
-					if(Float.compare(g.killyr, 1.0f) < 0) {//LT
-						if(globals.random.RandUni() <= g.killfreq)
-							g.regen_ok = false;
-					} else if((globals.currYear - g.startyr) % g.killfreq == 0) {
-						g.regen_ok = false;
-					}
-				}
-			} else {
-				for (Species species : g.species) {
-					if(!species.isUse_me())
-						continue;
-					if(!species.allow_growth)
-						continue;
-					
-					num_est = species.numEstablish();
-					if(num_est != 0) {
-						species.addIndiv(num_est);
-						species.updateEstabs(num_est);
-					}
-				}
-			}
-		}
-	}
-	
-	/**
 	 * Increment ages of individuals in a resource group.
 	 * @return
 	 * @throws Exception 
 	 */
-	public void incrAges(List<ResourceGroup> RGroup, Globals globals) throws Exception {
+	public void incrAges() throws Exception {
 		LogFileIn f = stepwat.LogFileIn.getInstance();
-		
-		for(ResourceGroup g : RGroup) {
-			if(g.max_age == 1)
-				continue;
-			for(Species s : g.est_spp) {
-				for(Indiv ndv : s.Indvs) {
-					ndv.age++;
-					if(ndv.age > s.getMax_age()) {
-						f.LogError(
-								LogMode.WARN,
-								s.getName() + "grown older than max_age ("
-										+ String.valueOf(ndv.age) + " > "
-										+ String.valueOf(s.getMax_age())
-										+ " Iter="
-										+ String.valueOf(globals.currIter)
-										+ ", Year="
-										+ String.valueOf(globals.currYear));
-					}
+
+		if (max_age == 1)
+			return;
+		for (Species s : est_spp) {
+			for (Indiv ndv : s.Indvs) {
+				ndv.age++;
+				if (ndv.age > s.getMax_age()) {
+					f.LogError(
+							LogMode.WARN,
+							s.getName() + "grown older than max_age ("
+									+ String.valueOf(ndv.age) + " > "
+									+ String.valueOf(s.getMax_age()) + " Iter="
+									+ String.valueOf(globals.currIter)
+									+ ", Year="
+									+ String.valueOf(globals.currYear));
 				}
 			}
 		}
@@ -535,10 +710,10 @@ public class ResourceGroup {
 		this.yrs_neg_pr = yrs_neg_pr;
 	}
 	public int getEst_count() {
-		return est_count;
+		return est_spp.size();
 	}
-	public void setEst_count(int est_count) {
-		this.est_count = est_count;
+	public void clearEstSpecies() {
+		this.est_spp.clear();
 	}
 	public void setExtirpated(boolean extirpated) {
 		this.extirpated = extirpated;

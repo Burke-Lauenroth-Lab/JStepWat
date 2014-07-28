@@ -393,7 +393,7 @@ public class Species extends Input {
 			}
 		}
 		this.data = true;
-		sort();
+		//sort();
 	}
 	
 	public void sort() {

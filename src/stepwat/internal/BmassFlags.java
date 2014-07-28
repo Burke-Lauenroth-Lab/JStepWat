@@ -1,6 +1,15 @@
 package stepwat.internal;
 
+import java.io.IOException;
+import java.nio.file.DirectoryIteratorException;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
 public class BmassFlags {
+	
+	Globals globals;
+	
 	private boolean summary,  /* if FALSE, print no biomass output */
     yearly, /* print individual yearly runs as well as average */
     header,
@@ -15,6 +24,10 @@ public class BmassFlags {
     sppb,
     indv;
 	private String sep;
+	
+	public BmassFlags(Globals g) {
+		this.globals = g;
+	}
 	
 	public boolean isSummary() {
 		return summary;
@@ -128,7 +141,7 @@ public class BmassFlags {
 		this.sep = sep;
 	}
 
-	public void setInput(stepwat.input.ST.BmassFlags bmassFlags) {
+	public void setInput(stepwat.input.ST.BmassFlags bmassFlags) throws IOException {
 		this.summary = bmassFlags.sumry;
 		this.yearly = bmassFlags.yearly;
 		this.header = bmassFlags.header;
@@ -147,5 +160,32 @@ public class BmassFlags {
 			sep = "\t";
 		if(bmassFlags.sep.compareTo("s") == 0)
 			sep = " ";
+		
+		Path bmassavg = Paths.get(globals.prjDir, globals.files[Globals.F_BMassAvg]);
+		if(java.nio.file.Files.exists(bmassavg.getParent())) {
+			if(java.nio.file.Files.exists(bmassavg))
+				java.nio.file.Files.delete(bmassavg);
+		} else {
+			java.nio.file.Files.createDirectories(bmassavg.getParent());
+			java.nio.file.Files.createFile(bmassavg);
+		}
+		
+		Path bmasspre = Paths.get(globals.prjDir, globals.files[Globals.F_BMassPre]);
+		if(java.nio.file.Files.exists(bmasspre.getParent())) {
+			//Get a list of all matches to remove			
+			try (DirectoryStream<Path> stream = java.nio.file.Files.newDirectoryStream(bmasspre.getParent(),
+					bmasspre.getFileName()+"*.{out}")) {
+				for (Path entry : stream) {
+					java.nio.file.Files.delete(entry);
+				}
+			} catch (DirectoryIteratorException ex) {
+				// I/O error encounted during the iteration, the cause is an
+				// IOException
+				throw ex.getCause();
+			}
+		} else {
+			java.nio.file.Files.createDirectories(bmasspre.getParent());
+			//java.nio.file.Files.createFile(bmasspre);
+		}
 	}
 }
