@@ -6,6 +6,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
+import soilwat.Defines;
 import stepwat.LogFileIn;
 import stepwat.LogFileIn.LogMode;
 import stepwat.input.ST.Rgroup;
@@ -15,8 +16,8 @@ public class ResourceGroup {
 
 	public static final int MAX_SPP_PER_GRP = 10;
 	public static final int Ppt_Wet=0;
-	public static final int Ppt_Norm=0;
-	public static final int Ppt_Dry=0;
+	public static final int Ppt_Norm=1;
+	public static final int Ppt_Dry=2;
 	
 	public enum DepthClass {
 		DepthNonComp, DepthShallow, DepthMedium, DepthDeep, DepthLast;
@@ -258,8 +259,8 @@ public class ResourceGroup {
 			regen_ok = false;
 		} else if (max_age == 1) {
 			// see similar logic in mort_EndOfYear() for perennials
-			if (Float.compare(killfreq, 0.0f) > 0) {// GT
-				if (Float.compare(killfreq, 1.0f) < 0) {// LT
+			if (Defines.GT(killfreq, 0.0f)) {// GT
+				if (Defines.LT(killfreq, 1.0f)) {// LT
 					if (globals.random.RandUni() <= killfreq)
 						regen_ok = false;
 				} else if ((globals.currYear - startyr) % killfreq == 0) {
@@ -291,7 +292,7 @@ public class ResourceGroup {
 		/** growth of one individual */
 		float growth1;
 		/** sum of growth for a species' indivs */
-		float sppgrowth;
+		float sppgrowth = 0;
 		/** rate of growth for an individual */
 		float rate1;
 		/** growth factor modifier */
@@ -309,7 +310,7 @@ public class ResourceGroup {
 		// grow individuals and increment size
 		// all groups are either all annual or all perennial
 		for (Species s : est_spp) {
-			sppgrowth = 0.0f;
+			sppgrowth = 0;
 			if (!s.allow_growth)
 				continue;
 
@@ -325,7 +326,7 @@ public class ResourceGroup {
 				// deleted EQN 5 because it's wrong. gmod==.05 is too low
 
 				gmod = 1.0f - OPT_SLOPE * Math.min(1.0f, ndv.pr);
-				if (Float.compare(ndv.pr, 1.0f) > 1)
+				if (Defines.GT(ndv.pr, 1.0f))
 					gmod /= ndv.pr;
 
 				// TODO: tgmod is not initialized in the C code.
@@ -335,9 +336,7 @@ public class ResourceGroup {
 					// if indiv appears killed it was reduced due to low
 					// resources last year. it can veg. prop. this year
 					// but couldn't last year.
-					growth1 = s.getRelseedlingsize()
-							* globals.random.RandUniRange(1,
-									s.getMax_vegunits());
+					growth1 = s.getRelseedlingsize() * globals.random.RandUniRange(1, s.getMax_vegunits());
 					rate1 = growth1 / ndv.relsize;
 					ndv.killed = false;
 				} else {
@@ -403,8 +402,8 @@ public class ResourceGroup {
 				forced = true;
 			}
 			
-			x = regen_ok ? get_annual_maxestab(s) : 0.0f;
-			if(Float.compare(x, 0.0f) > 0) {
+			x = regen_ok ? get_annual_maxestab(s) : 0;
+			if(Defines.GT(x, 0)) {
 				estabs = (x - (x / PR_0_est * g_pr)) * (float)Math.exp((double)-g_pr);
 				pr_inv = 1.0f / g_pr;
 				newsize = Math.min(pr_inv, estabs);
@@ -415,12 +414,41 @@ public class ResourceGroup {
 			}
 			
 			if(add_seeds && !forced)
-				add_annual_seedprod(s, Float.compare(x, 0.0f) == 0 ? -1.0f : g_pr);
+				add_annual_seedprod(s, Defines.isZero(x) ? -1.0f : g_pr);
 			
 			sumsize += newsize;
 		}
 		
 		return (sumsize / (float)max_spp);
+	}
+	
+	protected float est_annuals_bio(float g_pr) {
+		float x;
+		/* inverse of PR as the limit of estabs */
+		float newsize;
+		float sumsize;
+		
+		if(max_age != 1) {
+			//error?
+		}
+		
+		if(!use_me) {
+			return 0.0f;
+		}
+		
+		sumsize = 0.0f;
+		
+		for(Species s : species) {
+			newsize = 0.0f;
+			
+			x = regen_ok ? get_annual_maxestab(s) : 0;
+			if(Defines.GT(x, 0)) {
+				newsize = s.getMature_biomass();
+			}
+			
+			sumsize += newsize;
+		}
+		return sumsize;
 	}
 	
 	/**
@@ -582,8 +610,7 @@ public class ResourceGroup {
 			}
 		}
 		
-		if(est_count < 0) est_count = 0;
-		if(Float.compare(relsize, 0)==0) relsize=0;
+		if(Defines.isZero(relsize)) relsize=0;
 	}
 	
 	/**
@@ -591,11 +618,16 @@ public class ResourceGroup {
 	 * out, it is dropped from the group so it will not be
 	 * processed unnecessarily.
 	 */
-	protected void dropSpecies(Species s) {
-		if(est_spp.contains(s)) {
-			est_spp.remove(s);
-			est_count = est_spp.size();
-		}	
+	protected void dropSpecies(Iterator<Species> iter, Species s) {
+		//if(est_spp.contains(s)) {
+			//est_spp.remove(s);
+		if(iter != null)
+			iter.remove();
+		else
+			if(est_spp.contains(s))
+				est_spp.remove(s);
+		//est_count = est_spp.size();
+		//}	
 	}
 	
 	/**
@@ -624,7 +656,7 @@ public class ResourceGroup {
 		float extra, indivpergram;
 		
 		if(max_age == 1) return;
-		if(Float.compare(xgrow, 0) == 0) return;
+		if(Defines.isZero(xgrow)) return;
 		if(!use_extra_res) return;
 		
 		for(Species s : est_spp) {
@@ -653,7 +685,7 @@ public class ResourceGroup {
 				if (ndv.age > s.getMax_age()) {
 					f.LogError(
 							LogMode.WARN,
-							s.getName() + "grown older than max_age ("
+							s.getName() + " grown older than max_age ("
 									+ String.valueOf(ndv.age) + " > "
 									+ String.valueOf(s.getMax_age()) + " Iter="
 									+ String.valueOf(globals.currIter)
@@ -909,6 +941,10 @@ public class ResourceGroup {
 
 	public void setDepth(DepthClass depth) {
 		this.depth = depth;
+	}
+	
+	public String toString() {
+		return this.name;
 	}
 }
 

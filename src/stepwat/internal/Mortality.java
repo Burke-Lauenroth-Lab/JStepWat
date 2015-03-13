@@ -1,8 +1,10 @@
 package stepwat.internal;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
+import soilwat.Defines;
 import stepwat.LogFileIn;
 import stepwat.LogFileIn.LogMode;
 import stepwat.internal.Environs.PPTClass;
@@ -17,6 +19,7 @@ public class Mortality {
 	Succulent succulent;
 	RGroups rgroups;
 	
+	Iterator<Species> sIter;
 	//flag : some plant was reduced and PR is affected
 	private boolean someKillage;
 	
@@ -82,14 +85,16 @@ public class Mortality {
 			//mortify plants if low resources for consecutive years
 			//increment yrs_neg_pr if pr > 1, else zero it.
 			//one good year cancels all previous bad years.
-			if(Float.compare(g.pr, 1.0f) > 0) {//GT
+			sIter = null;
+			if(Defines.GT(g.pr, 1.0f)) {//GT
 				if(++g.yrs_neg_pr >= g.getMax_stretch())
 					noResources(g);
 			} else {
 				g.yrs_neg_pr = 0;
 			}
-			for(int i=g.est_spp.size()-1; i>=0; i--) {
-				Species s = g.est_spp.get(i);
+			sIter = g.est_spp.iterator();
+			while(sIter.hasNext()) {
+				Species s = sIter.next();
 				//Take care of mortality types 1 and 2
 				if(g.isUse_mort()) {
 					ageIndependent(s);
@@ -131,8 +136,8 @@ public class Mortality {
 	public void endOfYear() throws Exception {
 		
 		for(ResourceGroup g : rgroups) {
-			if(Float.compare(g.getKillfreq(), 0.0f) > 0) {//GT
-				if(Float.compare(g.getKillfreq(), 1.0f) < 0) {//LT
+			if(Defines.GT(g.getKillfreq(), 0.0f)) {//GT
+				if(Defines.LT(g.getKillfreq(), 1.0f)) {//LT
 					if(globals.random.RandUni() <= g.getKillfreq())
 						g.killyr = globals.currYear;
 				} else if((globals.currYear - g.getStartyr()) % g.getKillfreq() == 0) {
@@ -155,9 +160,11 @@ public class Mortality {
 		//Generate kill list, depending on sensitivity
 		if(plot.pat_removed) {
 			//get list of seedlings and annuals
-			for(Indiv p : sp.Indvs) {
+			Iterator<Indiv> iter = sp.Indvs.iterator();
+			while(iter.hasNext()) {
+				Indiv p = iter.next();
 				if(p.age == 1 || sp.getDisturbClass() == DisturbClass.VerySensitive) {
-					p.kill_Complete();
+					p.kill_Complete(sIter, iter);
 					this.someKillage = true;
 				}
 			}
@@ -218,11 +225,13 @@ public class Mortality {
 	
 	private void succulents(Species sp) throws Exception {
 		float killamt = succulent.reduction;
-		for(Indiv p : sp.Indvs) {
-			if(Float.compare(p.relsize, killamt) > 0) {//GT
+		Iterator<Indiv> iter = sp.Indvs.iterator();
+		while(iter.hasNext()) {
+			Indiv p = iter.next();
+			if(Defines.GT(p.relsize, killamt)) {//GT
 				p.kill_Partial(MortalityType.Slow, killamt);
 			} else {
-				p.kill_Complete();
+				p.kill_Complete(sIter, iter);
 				this.someKillage = true;
 			}
 		}
@@ -252,15 +261,16 @@ public class Mortality {
 		
 		float slowrate = sp.getRes_grp().getSlowrate() * sp.getMax_rate();
 		
-		for(int i=sp.Indvs.size()-1; i>=0; i--) {
-			Indiv ndv = sp.Indvs.get(i);
+		Iterator<Indiv> iter = sp.Indvs.iterator();
+		while(iter.hasNext()) {
+			Indiv ndv = iter.next();
 			if(ndv.age == 1)
 				continue;
 			if(ndv.growthrate <= slowrate) {
 				ndv.slow_yrs++;
 				//add to kill list if pm met
 				if(ndv.slow_yrs >= sp.getMax_slow() && globals.random.RandUni() <= pm) {
-					ndv.kill_Complete();
+					ndv.kill_Complete(sIter, iter);
 					this.someKillage = true;
 				}
 			} else {
@@ -281,19 +291,20 @@ public class Mortality {
 		float a;
 		
 		if(sp.getMax_age() == 0) {
-			//TODO: ERROR?
+			System.out.println("sp.getMax_age() == 0");
 		}
 		
 		if(sp.getMax_age() == 1)
 			return;
 		
-		for(int i=sp.Indvs.size()-1; i>=0; i--) {
-			Indiv ndv = sp.Indvs.get(i);
+		Iterator<Indiv> iter = sp.Indvs.iterator();
+		while(iter.hasNext()) {
+			Indiv ndv = iter.next();
 			a = (float) ndv.age / sp.getMax_age();
 			pn = (float) Math.pow((double) sp.getMax_age(), (double) a - 1) - (a*sp.getCohort_surv());
 			//kill if pn met
 			if(globals.random.RandUni() <= pn) {
-				ndv.kill_Complete();
+				ndv.kill_Complete(sIter, iter);
 				this.someKillage = true;
 			}
 		}	
@@ -316,7 +327,7 @@ public class Mortality {
 	 * @throws Exception 
 	 */
 	private void noResources(ResourceGroup rg) throws Exception {
-		int i, nk, n;
+		int i=0, nk, n;
 		List<Indiv> indv_list;
 		
 		//Sorted List of Indv in this group
@@ -324,9 +335,18 @@ public class Mortality {
 		n = indv_list.size();
 		//kill until nk reached (EQN 7)
 		nk = (int) ((n * (1.0f - 1.0f / rg.pr)) + .5f);
-		for(i=0; i<nk; i++) {
-			indv_list.get(i).kill_Complete();
-			this.someKillage = true;
+		
+		Iterator<Indiv> iter = indv_list.iterator();
+		while(iter.hasNext()) {
+			if(i < nk) {
+				Indiv ndv = iter.next();
+				ndv.myspecies.Indvs.remove(ndv);
+				ndv.kill_Complete(sIter, iter);
+				i++;
+				this.someKillage = true;
+			} else {
+				break;
+			}
 		}
 		
 		/*
@@ -343,7 +363,7 @@ public class Mortality {
 	
 	private void stretchedClonal(ResourceGroup rg, int start, int last, List<Indiv> nlist) throws Exception {
 		LogFileIn f = stepwat.LogFileIn.getInstance();
-		int i,y, //number of years of stretched resources
+		int i=0,y, //number of years of stretched resources
 		nk; //number of clonal plants to kill if pm met
 		float pm; //probablity of mortality (eqn 8)
 		
@@ -374,10 +394,17 @@ public class Mortality {
 				
 				//kill until we reach quota or number of plants
 				nk = Math.min(nk, clist.size());
-				for(i=0; i<nk; i++) {
-					clist.get(i).kill_Complete();
-					if(i==0)
+				Iterator<Indiv> iter = clist.iterator();
+				while(iter.hasNext()) {
+					if(i<nk) {
+						Indiv ndv = iter.next();
+						ndv.myspecies.Indvs.remove(ndv);
+						ndv.kill_Complete(sIter, iter);
+						i++;
 						this.someKillage = true;
+					} else {
+						break;
+					}
 				}
 			} else {//reduce inverse-proportionally
 				total_reduction = 1.0f / rg.pr;
@@ -448,7 +475,7 @@ public class Mortality {
 			if(!rg.isUse_extra_res())
 				continue;
 			for(Species sp : rg.est_spp) {
-				if(Float.compare(sp.extragrowth, 0.0f) == 0)//ZRO
+				if(Defines.isZero(sp.extragrowth))//ZRO
 					continue;
 				sp.update_Newsize(-sp.extragrowth);
 				sp.extragrowth = 0.0f;

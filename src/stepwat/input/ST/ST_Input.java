@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import stepwat.LogFileIn;
+import stepwat.input.SXW.SXW_Input;
 
 public class ST_Input {
 	
@@ -29,6 +30,8 @@ public class ST_Input {
 	public Plot plot;
 	public Rgroup rGroup;
 	public Species species;
+	//SXW Input
+	public SXW_Input sxwIn;
 	
 	public ST_Input() {
 		Path currentRelativePath = Paths.get("");
@@ -75,6 +78,14 @@ public class ST_Input {
 		mortFlags.read(Paths.get(prjDir, files.mortflags));
 		rGroup.read(Paths.get(prjDir, files.rgroup));
 		species.read(Paths.get(prjDir, files.species));
+		
+		if(Files.exists(Paths.get(prjDir, files.sxw))) {
+			if(Files.isRegularFile(Paths.get(prjDir, files.sxw))) {
+				sxwIn = new SXW_Input(prjDir, files.sxw);
+				sxwIn.readInputData();
+			}
+		}
+			
 	}
 	
 	public void filesExist() throws Exception {
@@ -248,6 +259,9 @@ public class ST_Input {
 			return false;
 		
 		if(!species.verify())
+			return false;
+		
+		if(!sxwIn.verify(this.rGroup))
 			return false;
 		
 		return true;

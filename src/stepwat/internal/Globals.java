@@ -249,6 +249,14 @@ public class Globals {
 		//rGroup
 		this.setGrpMaxEstab(rGroup.nGrpEstab);
 	}
+	
+	public boolean useSoilWat() {
+		return this.UseSoilwat;
+	}
+	
+	public void setUseSoilWat(boolean use) {
+		this.UseSoilwat = use;
+	}
 
 	public String[] getFiles() {
 		return files;

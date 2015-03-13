@@ -171,7 +171,7 @@ public class Grid_Input {
 		}
 		//soils checks
 		if(soils.data()) {
-			if(soils.Grid_Soils.size() != setup.gridCells()) {
+			if(soils.Grid_Soils.length != setup.gridCells()) {
 				f.LogError(LogFileIn.LogMode.WARN, "GRID verify : grid soils : Wrong number of cells");
 				return false;
 			}

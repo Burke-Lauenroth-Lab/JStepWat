@@ -103,7 +103,7 @@ public class Files extends Input {
 					break;
 				default:
 					f.LogError(LogFileIn.LogMode.ERROR,
-							"Grid files.in : unkown line.");
+							"ST files.in : unkown line.");
 					break;
 				}
 				nFileItemsRead++;

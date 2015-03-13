@@ -8,13 +8,14 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
+import soilwat.Defines;
 import stepwat.LogFileIn.LogMode;
 import stepwat.input.ST.ST_Input;
 import stepwat.internal.*;
 
 public class Control {
 	private boolean beenhere = false;
-	private boolean logged; /* indicator that err file was written to */
+	//private boolean logged; /* indicator that err file was written to */
 
 	private RGroups rGroups;
 
@@ -28,17 +29,18 @@ public class Control {
 	private InitParams initParams;
 	private Stats stats;
 	private Output output;
+	private SXW sxw;
 
 	public class InitParams {
 		/**
 		 * Project Working Directory<br>
 		 * If not set, will default to programs launch directory.
 		 */
-		public String workingDirectory = "";
+		public String workingDirectory = ".";
 		/**
 		 * Relative Path from PrjDir to files.in file.
 		 */
-		public String filesInRelativePath = "";
+		public String filesInRelativePath = "files.in";
 		/**
 		 * quiet mode, don't print message to check logfile.
 		 */
@@ -55,6 +57,10 @@ public class Control {
 		 * use gridded mode
 		 */
 		public boolean UseGrid = false;
+		/**
+		 * use seed disp
+		 */
+		public boolean UseSeedDispersal = false;
 	}
 
 	public Control() {
@@ -74,7 +80,7 @@ public class Control {
 
 	public Control(String[] args) throws Exception {
 		initParams = new InitParams();
-		init_args(args, initParams);
+		init_args(args);
 
 		init();
 		
@@ -92,6 +98,7 @@ public class Control {
 		this.initParams.QuietMode = initParams.QuietMode;
 		this.initParams.UseGrid = initParams.UseGrid;
 		this.initParams.UseSoilwat = initParams.UseSoilwat;
+		this.initParams.UseSeedDispersal = initParams.UseSeedDispersal;
 
 		init();
 		
@@ -111,6 +118,7 @@ public class Control {
 		initParams.QuietMode = false;
 		initParams.UseGrid = false;
 		initParams.UseSoilwat = false;
+		initParams.UseSeedDispersal = false;
 		
 		init();
 		setInput(input);
@@ -120,6 +128,7 @@ public class Control {
 		// Initialize all internal objects and give references
 		globals = new Globals();
 		globals.prjDir = initParams.workingDirectory;
+		globals.UseSeedDispersal = initParams.UseSeedDispersal;
 		Plot = new Plot();
 		Succulent = new Succulent();
 		BmassFlags = new BmassFlags(globals);
@@ -127,14 +136,15 @@ public class Control {
 		Env = new Environs(globals, Plot, Succulent);
 		rGroups = new RGroups(globals, Plot, Succulent, Env, MortFlags);
 		mort = new Mortality(globals, Plot, Succulent, Env, rGroups);
-
+		sxw = new SXW(rGroups, globals, Env);
 		
 		stats = new Stats(globals, Plot, Env, rGroups, BmassFlags, MortFlags);
 		output = new Output(globals, Plot, Env, rGroups, BmassFlags, MortFlags);
 	}
 
 	private void setInput(ST_Input in) throws Exception {
-
+		LogFileIn f = stepwat.LogFileIn.getInstance();
+		
 		globals.setInput(initParams.workingDirectory,
 				initParams.filesInRelativePath, in.files, in.model,
 				in.environment, in.plot, in.rGroup);
@@ -224,14 +234,23 @@ public class Control {
 		 * if seed is too large; should be removed in the near future.
 		 */
 		globals.random.RandSeed(globals.getRandseed());
+		globals.setUseSoilWat(this.initParams.UseSoilwat);
+		
+		if (globals.useSoilWat()) {
+			if(in.sxwIn != null) {
+				sxw.setInput(in.sxwIn, Paths.get(in.prjDir, in.files.bmassavg).getParent(), in.rGroup);
+			} else {
+				f.LogError(LogMode.FATAL, "ST Control : UseSoilWat is True but no data.");
+			}
+		}
 	}
 
 	public void run() throws Exception {
 
 		int year, iter, incr;
-		boolean killedany;
+		//boolean killedany;
 
-		logged = false;
+		//logged = false;
 
 		// if(this.initParams.UseGrid == true) {
 		// runGrid();
@@ -240,8 +259,7 @@ public class Control {
 
 		parm_Initialize(0);
 
-		// if (this.initParams.UseSoilwat)
-		// SXW_Init(true);
+		
 
 		incr = (int) ((float) globals.getRunModelIterations() / 10);
 		if (incr == 0)
@@ -264,15 +282,15 @@ public class Control {
 				globals.setCurrYear(year);
 
 				rGroups.establish(); // excludes annuals
-				Env.generate(rGroups);
-				rGroups.partResources();
+				Env.generate(rGroups,sxw);//runs soilwat
+				rGroups.partResources(sxw);
+				
+				if (sxw.debug)
+					sxw.writeDebug(false);
+				
 				rGroups.grow();
 
-				// #ifdef STEPWAT
-				// if (!isnull(SXW.debugfile) ) SXW_PrintDebug();
-				// #endif
-
-				killedany = mort.mortalityMain();
+				mort.mortalityMain();//killedany = 
 				rGroups.incrAges();
 				stats.collect(year);
 
@@ -290,6 +308,9 @@ public class Control {
 
 			if (MortFlags.isYearly())
 				output.mortYearly();
+			
+			if(globals.useSoilWat())
+				sxw.reset();
 
 		} /* end model run for this iteration */
 
@@ -297,6 +318,9 @@ public class Control {
 			stats.outputAllMorts();
 		if (BmassFlags.isSummary())
 			stats.outputAllBmass();
+		
+		if (sxw.debug)
+			sxw.writeDebug(true);
 
 		System.out.println();
 		return;
@@ -314,7 +338,7 @@ public class Control {
 		System.out.println(s);
 	}
 
-	private void init_args(String[] args, InitParams initParams) {
+	private void init_args(String[] args) {
 		/*
 		 * to add an option: - include it in opts[] - set a flag in valopts
 		 * indicating no value (0), value required (1), or value optional (-1),
@@ -331,8 +355,7 @@ public class Control {
 		 * info (dots) is written to stderr.
 		 */
 		 //valid options
-		@SuppressWarnings("unused")
-		String str, opts[] = { "-d", "-f", "-q", "-s", "-e", "-p", "-g" };
+		String str="", opts[] = { "-d", "-f", "-q", "-s", "-e", "-p", "-g" };
 		int valopts[] = { 1, 1, 0, -1, 0, 0, 0 }; /* indicates options with values */
 		/* 0=none, 1=required, -1=optional */
 		int i, /* looper through all cmdline arguments */
@@ -342,12 +365,12 @@ public class Control {
 		boolean lastop_noval = false;
 
 		/* Defaults */
-		initParams.UseSoilwat = initParams.QuietMode = initParams.EchoInits = globals.UseSeedDispersal = false;
+		initParams.UseSoilwat = initParams.QuietMode = initParams.EchoInits = initParams.UseSeedDispersal = false;
 		// SXW.debugfile = null;
 		// progfp = stderr;
 
-		a = 1;
-		for (i = 1; i <= nopts; i++) {
+		a = 0;
+		for (i = 0; i < nopts; i++) {
 			if (a >= args.length)
 				break;
 
@@ -361,11 +384,11 @@ public class Control {
 				usage();
 				// exit
 			}
-			if (a == args.length - 1 && args[a].length() == 2)
-				lastop_noval = true;
+			//if (a == args.length - 1 && args[a].length() == 2)
+			//	lastop_noval = true;
 
 			/* extract value part of option-value pair */
-			if (valopts[op] != 0) {
+			if (valopts[op] > 0) {
 				if (lastop_noval && valopts[op] < 0) {
 					/* break out, optional value not available */
 					/* avoid checking past end of array */
@@ -393,13 +416,10 @@ public class Control {
 			/* set indicators/variables based on results */
 			switch (op) {
 			case 0: /* -d */
-				// Path path = Paths.get(str);
-				// if (Files.notExists(path)) {
-				// System.err.println("Invalid project directory " + str);
-				// }
+				initParams.workingDirectory = str;
 				break;
 			case 1:
-				// parm_SetFirstName(str);
+				initParams.filesInRelativePath = str;
 				break; /* -f */
 			case 2:
 				initParams.QuietMode = true;
@@ -420,8 +440,7 @@ public class Control {
 				break; /* -g */
 
 			default:
-				System.err
-						.println("Programmer: bad option in main:init_args:switch");
+				System.err.println("Programmer: bad option in main:init_args:switch");
 			}
 
 			a++; /* move to next valid option-value position */
@@ -488,7 +507,7 @@ public class Control {
 			sp.kill();
 
 			// TODO: programmer alert: INVESTIGATE WHY THIS OCCURS
-			if (Float.compare(sp.getRelsize(), 0) != 0) {
+			if (!Defines.isZero(sp.getRelsize())) {
 				f.LogError(
 						LogMode.NOTE,
 						sp.getName() + " relsize "
@@ -527,9 +546,8 @@ public class Control {
 			rg.setYrs_neg_pr(0);
 			rg.setExtirpated(false);
 		}
-		//TODO : finish
-		// if(this.initParams.UseSoilwat)
-		// SXW_InitPlot();
+		if(globals.useSoilWat())
+			sxw.initPlot();
 	}
 
 }

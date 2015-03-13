@@ -1,7 +1,9 @@
 package stepwat.internal;
 
+import java.util.Iterator;
 import java.util.LinkedList;
 
+import soilwat.Defines;
 import stepwat.LogFileIn;
 import stepwat.LogFileIn.LogMode;
 
@@ -40,7 +42,7 @@ public class Species {
 	/**
 	 * size of all indivs' relsize (>= 0)
 	 */
-	protected float relsize;
+	protected float relsize=0;
 	/**
 	 * annuals: array of previous years' seed production (size = viable_yrs)
 	 */
@@ -48,7 +50,7 @@ public class Species {
 	/**
 	 * amt of superfluous growth from extra resources
 	 */
-	protected float extragrowth;
+	protected float extragrowth=0;
 	/**
 	 * the chance that this species received seeds this year... only applicable if using seed dispersal and gridded option
 	 */
@@ -248,7 +250,7 @@ public class Species {
 			}
 		}
 		//float biomass = relsize * mature_biomass;
-		if(res_grp.isEst_annually() || Float.compare(globals.random.RandUni(), seedling_estab_prob) < 0 || sd_sgerm) {
+		if(res_grp.isEst_annually() || Defines.LT(globals.random.RandUni(), seedling_estab_prob) || sd_sgerm) {
 			if(max_seed_estab <= 1)
 				return 1;
 			else
@@ -290,11 +292,21 @@ public class Species {
 	public void update_Newsize(float newsize) throws Exception {
 		LogFileIn f = stepwat.LogFileIn.getInstance();
 		
+		//if this cond. true, we're off a bit from zeroing. fix it
+		if (Indvs.size() == 1 && newsize < -this.relsize) {
+			newsize = -this.relsize;
+		}
+
+		this.relsize += newsize;
+		if (Defines.isZero(relsize) || Math.abs(relsize) < 1E-5)
+			relsize = 0;
+		
 		if(this.relsize < 0.0) {
-			f.LogError(LogMode.WARN, "Species_Update_Newsize: " + name
+			f.LogError(LogMode.WARN, "Species_Update_Newsize: " + this.res_grp.getName() + " : " + name
 					+ " relsize < 0.0 (=" + String.valueOf(relsize)
 					+ ")  year=" + String.valueOf(globals.getCurrYear())
 					+ ", iter=" + String.valueOf(globals.getCurrIter()));
+			this.relsize = 0;
 		}
 		if(this.relsize > 100.0) {
 			f.LogError(LogMode.NOTE, "Species_Update_Newsize: " + name
@@ -303,18 +315,8 @@ public class Species {
 					+ ", iter=" + String.valueOf(globals.getCurrIter()));
 		}
 		
-		//if this cond. true, we're off a bit from zeroing. fix it
-		if (Indvs.size() == 1 && newsize < -this.relsize) {
-			newsize = -this.relsize;
-		}
-		
-		this.relsize += newsize;
 		this.res_grp.update_Newsize();
 		
-		//if(max_age != 1) {
-			//if(Indvs.size() < 0) est_count = 0;
-		//}
-		if(Float.compare(relsize, 0) == 0) relsize = 0;
 	}
 	
 	/**
@@ -325,11 +327,13 @@ public class Species {
 		if(this.max_age ==1) {
 			update_Newsize(-relsize);
 		} else {
-			for(int i=Indvs.size()-1; i>=0 ; i--) {
-				Indvs.get(i).kill_Complete();
+			Iterator<Indiv> iter = Indvs.iterator();
+			while(iter.hasNext()) {
+				Indiv p = iter.next();
+				p.kill_Complete(null, iter);
 			}
 		}
-		res_grp.dropSpecies(this);
+		res_grp.dropSpecies(null, this);
 	}
 	
 	/**
@@ -637,5 +641,9 @@ public class Species {
 
 	public void setUse_me(boolean use_me) {
 		this.use_me = use_me;
+	}
+	
+	public String toString() {
+		return this.getRes_grp().getName()+":"+this.name+":"+String.valueOf(this.relsize);
 	}
 }

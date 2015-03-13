@@ -1,7 +1,9 @@
 package stepwat.internal;
 
 import java.util.Comparator;
+import java.util.Iterator;
 
+import soilwat.Defines;
 import stepwat.LogFileIn;
 import stepwat.LogFileIn.LogMode;
 import stepwat.internal.Species.MortalityType;
@@ -115,15 +117,14 @@ public class Indiv {
 	public boolean kill_Partial(MortalityType code, float killamt) throws Exception {
 		boolean result = false;
 		
-		Species species = this.myspecies;
-		if(Float.compare(relsize, killamt) > 0 && species.isIsclonal()) {
+		if(Defines.GT(relsize, killamt) && myspecies.isIsclonal()) {
 			result = true;
 			this.killed = true;
 			this.relsize -= killamt;
 			this.killedby = code;
 			this.growthrate = 0;
-			this.prob_veggrow = species.getProb_veggrow()[code.ordinal()];
-			species.update_Newsize(-killamt);
+			this.prob_veggrow = myspecies.getProb_veggrow()[code.ordinal()];
+			myspecies.update_Newsize(-killamt);
 		}
 		return result;
 	}
@@ -135,7 +136,7 @@ public class Indiv {
 	 * @param ndv
 	 * @throws Exception
 	 */
-	public void kill_Complete() throws Exception {
+	public void kill_Complete(Iterator<Species> sItr, Iterator<Indiv> itr) throws Exception {
 		LogFileIn f = stepwat.LogFileIn.getInstance();
 
 		if (age > myspecies.getMax_age()) {
@@ -146,20 +147,20 @@ public class Indiv {
 					+ String.valueOf(globals.getCurrYear()));
 		}
 		myspecies.update_Kills(age);
+		delete(sItr, itr);
 		myspecies.update_Newsize(-relsize);
-		delete();
 	}
 	
 	/**
 	 * Local routine to remove the data object of an individual.
 	 * Called from indiv_Kill_Complete()
 	 */
-	private void delete() {
-
-		myspecies.Indvs.remove(this);
+	private void delete(Iterator<Species> sItr, Iterator<Indiv> itr) {
+		itr.remove();
+		//myspecies.Indvs.remove(this);
 		int count = myspecies.Indvs.size();
-		if ((--count) == 0) {
-			myspecies.getRes_grp().dropSpecies(myspecies);
+		if ((count) == 0) {
+			myspecies.getRes_grp().dropSpecies(sItr, null);
 		}
 	}
 	//Custom sort methods for indv
@@ -188,5 +189,9 @@ public class Indiv {
 				value = 0;
 			return value;
 		}
+	}
+	
+	public String toString() {
+		return this.myspecies.getRes_grp().getName() + ":" + this.myspecies.getName() + ":" + String.valueOf(this.relsize);
 	}
 }

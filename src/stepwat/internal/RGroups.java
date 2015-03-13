@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+import soilwat.Defines;
 import stepwat.LogFileIn;
 import stepwat.LogFileIn.LogMode;
 import stepwat.input.ST.Species.AnnualsParams;
@@ -74,12 +75,14 @@ public class RGroups implements Iterable<ResourceGroup> {
 		 * count and link species to their groups.
 		 * print a message if more specified than available
 		 */
-		int cnt = 0;
+		
 		for(int rg=0; rg<rgroups.size(); rg++) {
+			int cnt = 0;
 			ResourceGroup g = rgroups.get(rg);
 			for(int sp=0; sp<speciesList.size(); sp++) {
 				if(this.speciesList.get(sp).getRes_grp().getGrp_num() == rg) {
 					g.getSpecies().add(speciesList.get(sp));
+					cnt++;
 				}
 			}
 			g.setMax_spp(cnt);
@@ -253,7 +256,7 @@ public class RGroups implements Iterable<ResourceGroup> {
 	 * groups.
 	 * @throws Exception 
 	 */
-	public void partResources() throws Exception {
+	public void partResources(SXW sxw) throws Exception {
 		/** amt of "resource" == 1 when ppt is avg */
 		float resource;
 		/** pooled extra resource up to 1.0 */
@@ -276,8 +279,8 @@ public class RGroups implements Iterable<ResourceGroup> {
 			if (g.getMax_age() == 1)
 				g.relsize = g.add_annuals(1.0f, no_seeds);
 
-			resource = g.ppt2resource(env.ppt);
 			if (!globals.UseSoilwat) {
+				resource = g.ppt2resource(env.ppt);
 				g.res_required = g.relsize / g.getMax_density();
 				g.res_avail = Math.min(1.0f, Math.min(g.res_required, resource));
 				xtra_base += Math.max(0., Math.min(1., resource) - g.res_avail) * g.getMin_res_req();
@@ -286,8 +289,34 @@ public class RGroups implements Iterable<ResourceGroup> {
 				size_base[g.getGrp_num()] = g.relsize * g.getMin_res_req();
 				size_obase[g.getGrp_num()] = (g.isUse_extra_res()) ? size_base[g.getGrp_num()] : 0.0f;
 			} else {
-				//g.res_required = 
-				g.res_avail = 1.0f;
+				g.res_required = g.getBiomass();
+				g.res_avail = sxw.getTranspiration(g.getGrp_num());
+				
+				//PR limit can be really high see mort no_resource I limit to the groups estab indiv because that is what we can kill.
+				//This was at 10 but ten might be to low or high in some cases.
+				if(!Defines.isZero(g.res_avail) && g.res_required/g.res_avail > g.estabs) {
+					g.res_required = g.estabs;
+					g.res_avail = 1;
+				}
+				//Check
+				if(Defines.isZero(g.res_avail) && g.res_required > 0) {
+					g.res_required = g.estabs;
+					g.res_avail = 1;
+				}
+				
+				//Annuals seem to have a artificial limit of 20. We do Annuals here differently.
+				if(g.getMax_age() == 1) {
+					g.res_required = g.relsize * g.est_annuals_bio(1.0f);
+					g.res_avail = sxw.getTranspiration(g.getGrp_num());
+					if(!Defines.isZero(g.res_avail) && g.res_required / g.res_avail > 20) {
+						g.res_required = 20;
+						g.res_avail = 1;
+					}
+					if(Defines.isZero(g.res_avail) && g.res_required > 0) {
+						g.res_required = 20;
+						g.res_avail = 1;
+					}
+				}
 			}
 			if(Float.compare(g.relsize, 0.0f) > 0)
 				noplants = false;

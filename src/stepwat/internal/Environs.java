@@ -44,10 +44,11 @@ public class Environs {
 	 * Wrapper to generate a new set of environmental factors,
 	 * usually for the current year.  Any new environmental
 	 * generators should be called from this subroutine.
+	 * @throws Exception 
 	 */
-	public void generate(RGroups rgroups) {
+	public void generate(RGroups rgroups, SXW sxw) throws Exception {
 		if(globals.UseSoilwat) {
-			//SXW_Run_SOILWAT();
+			sxw.run_soilwat();
 		} else {
 			for(ResourceGroup g : rgroups) {
 				g.res_avail = 0.0f;
